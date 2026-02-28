@@ -2,7 +2,8 @@ param([string]$Action = "deploy")
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$DeployDir = "/opt/spin-js-app"
+$SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
+$Registry = "localhost:15000"
 $NomadAddr = "http://localhost:4646"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
@@ -20,13 +21,12 @@ Push-Location $ScriptDir
 npm run build
 Pop-Location
 
-# 2. deploy files to WSL
-Info "=== Deploy files ==="
-$wslPath = ($ScriptDir -replace '\\','/')
-$driveLetter = $wslPath.Substring(0,1).ToLower()
-$wslPath = "/mnt/$driveLetter" + $wslPath.Substring(2)
-wsl bash -c "mkdir -p $DeployDir/dist; cp '$wslPath/spin.toml' $DeployDir/; cp '$wslPath/dist/spin-js-app.wasm' $DeployDir/dist/"
-Info "Files deployed"
+# 2. push to OCI registry
+Info "=== Push to Registry ==="
+Push-Location $ScriptDir
+& $SpinExe registry push "$Registry/spin-js-app:latest" --insecure
+Pop-Location
+Info "Pushed to $Registry/spin-js-app:latest"
 
 # 3. submit nomad job via API
 Info "=== Submit Nomad Job ==="
@@ -48,7 +48,6 @@ Remove-Item $tmpParse, $tmpSubmit -ErrorAction SilentlyContinue
 
 if ($result.EvalID) {
     Info "Deployed! EvalID: $($result.EvalID)"
-    # Force restart to pick up new wasm files
     curl.exe -s -X POST "$NomadAddr/v1/job/spin-js-app/evaluate?ForceReschedule=true" | Out-Null
     Info "Force restarted allocations"
 } else {
