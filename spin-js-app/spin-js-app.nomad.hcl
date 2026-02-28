@@ -35,9 +35,10 @@ job "spin-js-app" {
       driver = "docker"
 
       config {
-        image      = "daprio/daprd:1.16.9"
-        force_pull = false
-        command    = "./daprd"
+        image        = "daprio/daprd:1.16.9"
+        force_pull   = false
+        ports        = ["dapr-http", "dapr-grpc"]
+        command      = "./daprd"
         args = [
           "-app-id", "spin-js-app",
           "-app-port", "80",
