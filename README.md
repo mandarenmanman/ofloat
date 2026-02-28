@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
 ![WASM](https://img.shields.io/badge/WebAssembly-Enabled-orange)
 ![Dapr](https://img.shields.io/badge/Dapr-v1.16.9-blue)
-![Spin](https://img.shields.io/badge/Fermyon_Spin-v2.0-lightgrey)
+![Spin](https://img.shields.io/badge/Fermyon_Spin-v3.6.2-lightgrey)
 ![AI Native](https://img.shields.io/badge/AI_Code-100%25_Friendly-brightgreen)
 
 > **一句话**：让 AI 只写业务逻辑，基础设施的事全部消失。从 Prompt 到生产部署，端到端零摩擦。
@@ -40,7 +40,7 @@
 | 业务逻辑 | AI / 开发者 | 只写 HTTP handler，向 `localhost:3500` 发请求 |
 | 运行时沙箱 | Spin (WASM) | 微秒启动、内存隔离、极简二进制 |
 | 基础设施 | Dapr Sidecar | 状态存储、消息队列、分布式追踪，全部通过 HTTP API 暴露 |
-| 编排部署 | Nomad | `bash deploy-nomad.sh` 一键搞定 |
+| 编排部署 | Nomad + OCI Registry | PowerShell 脚本一键 build → push → deploy |
 
 ---
 
@@ -50,16 +50,32 @@
 
 把这段 Prompt 丢给任何 LLM（ChatGPT / Copilot / Kiro）：
 
+**Rust 版本：**
+
 ```text
 我在用 Fermyon Spin SDK (spin-sdk 5.2.0) 写 Rust HTTP 组件。
 帮我写一个 handler：
 - GET /health 返回 {"status":"healthy"}
-- POST /orders 时，把请求体转发到 http://127.0.0.1:3500/v1.0/publish/pubsub/orders
 - POST /state 时，把请求体转发到 http://127.0.0.1:3500/v1.0/state/statestore
+- POST /publish/:topic 时，把请求体转发到 http://127.0.0.1:3500/v1.0/publish/pubsub/:topic
 只用标准 HTTP 调用，不引入任何第三方 SDK。
 ```
 
-AI 生成的代码大概长这样（这也是项目里 `spin-app/src/lib.rs` 的真实结构）：
+**JavaScript 版本：**
+
+```text
+我在用 Fermyon Spin JS SDK 写 JavaScript HTTP 组件，使用 itty-router。
+帮我写一个 handler：
+- GET /health 返回 {"status":"healthy"}
+- POST /state 时，把请求体转发到 http://127.0.0.1:3501/v1.0/state/statestore
+- GET /state/:key 时，从 http://127.0.0.1:3501/v1.0/state/statestore/:key 读取
+- POST /publish/:topic 时，把请求体转发到 http://127.0.0.1:3501/v1.0/publish/pubsub/:topic
+只用标准 fetch API，不引入任何第三方 SDK。
+```
+
+项目包含两个示例应用：
+
+**Rust App** (`spin-rust-app/src/lib.rs`)：
 
 ```rust
 use spin_sdk::http::{IntoResponse, Request, Response};
@@ -73,7 +89,6 @@ fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
             .header("content-type", "application/json")
             .body(r#"{"status":"healthy"}"#)
             .build()),
-        // ... 你的业务逻辑
         _ => Ok(Response::builder()
             .status(200)
             .body("Hello from WASM + Dapr")
@@ -82,42 +97,64 @@ fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
 }
 ```
 
-注意看：**没有 Redis SDK，没有 Kafka client，没有任何云厂商依赖**。`Cargo.toml` 里只有两个依赖：
+**JS App** (`spin-js-app/src/index.js`)：
 
-```toml
-[dependencies]
-anyhow = "1"
-spin-sdk = "5.2.0"
+```javascript
+import { AutoRouter } from 'itty-router';
+const DAPR_URL = 'http://127.0.0.1:3501';
+let router = AutoRouter();
+
+router
+    .get('/health', () => new Response(
+        JSON.stringify({ status: 'healthy' }),
+        { headers: { 'content-type': 'application/json' } }
+    ))
+    .post('/state', async (req) => {
+        const body = await req.text();
+        const resp = await fetch(`${DAPR_URL}/v1.0/state/statestore`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body,
+        });
+        return new Response(resp.body, { status: resp.status });
+    });
 ```
 
-这就是 AI 需要理解的全部上下文。
+注意看：**没有 Redis SDK，没有 Kafka client，没有任何云厂商依赖**。所有基础设施操作 = 向 Dapr sidecar 发 HTTP 请求。
 
-### Step 2 — 一键部署（Nomad）
+### Step 2 — 一键部署
 
-```bash
-# 1. 启动 Nomad dev 模式（另开一个终端）
+开发环境在 Windows + WSL 上运行，部署脚本为 PowerShell。
+
+```powershell
+# 1. WSL 中启动 Nomad dev 模式（另开一个终端）
 nomad agent -dev
 
-# 2. 先部署基础设施（redis、placement、registry）
+# 2. 部署基础设施（在 WSL 中执行）
 nomad job run nomad/redis.nomad.hcl
 nomad job run nomad/dapr-placement.nomad.hcl
 nomad job run nomad/registry.nomad.hcl
 
-# 3. 构建并部署应用
-bash deploy-nomad.sh
+# 3. WSL 中登录 ghcr.io（raw_exec 拉取镜像需要）
+/usr/local/bin/spin registry login ghcr.io -u <username> -p <token>
+
+# 4. Windows PowerShell 中部署应用（build → push ghcr.io → nomad submit）
+.\spin-js-app\deploy.ps1
+.\spin-rust-app\deploy.ps1
 ```
 
-脚本自动完成：编译 WASM → 部署文件到 `/opt/spin-app` → 启动 Spin + Dapr Sidecar + Dashboard。
+脚本自动完成：编译 WASM → 推送到 ghcr.io → 通过 Nomad HTTP API 提交 Job → Nomad 的 raw_exec 从 OCI registry 拉取并启动。
 
 ### Step 3 — 验证
 
 ```bash
-# 通过 Dapr Sidecar 调用你的 WASM 应用
+# Rust App（通过 Dapr Sidecar）
 curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 # → {"status":"healthy"}
 
-# Dapr Dashboard（浏览器打开）
-# → http://localhost:8080
+# JS App（通过 Dapr Sidecar）
+curl http://localhost:3501/v1.0/invoke/spin-js-app/method/health
+# → {"status":"healthy"}
 
 # Nomad UI（浏览器打开）
 # → http://localhost:4646
@@ -138,7 +175,7 @@ curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 | 发布消息 | "向 `http://127.0.0.1:3500/v1.0/publish/pubsub/{topic}` POST 消息体" |
 | 服务调用 | "向 `http://127.0.0.1:3500/v1.0/invoke/{app-id}/method/{path}` 发请求" |
 
-核心思路：**所有基础设施操作 = 向 `localhost:3500` 发 HTTP 请求**。AI 不需要知道背后是 Redis 还是 DynamoDB。
+核心思路：**所有基础设施操作 = 向 Dapr sidecar 发 HTTP 请求**。AI 不需要知道背后是 Redis 还是 DynamoDB。
 
 ---
 
@@ -148,41 +185,53 @@ curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 [User / AI Agent]
        │  只写 HTTP handler
        ▼
-┌──────────── Nomad (dev mode) ──────────┐
-│                                        │
-│  Spin Engine          Dapr Sidecar     │
-│  ┌──────────┐   HTTP  ┌──────────┐    │
-│  │WASM Core │ ──────▶ │State/MQ  │    │
-│  │(AI Code) │         │Components│    │
-│  │  :80     │         │  :3500   │    │
-│  └──────────┘         └──────────┘    │
-│  (raw_exec)           (docker)        │
-│                             │          │
-└─────────────────────────────┼──────────┘
-                              ▼
-            [Redis / Kafka / DynamoDB / ...]
+┌──────────── Nomad (dev mode) ──────────────────┐
+│                                                 │
+│  Job: spin-app (Rust)                          │
+│  ┌──────────────────────────────────┐          │
+│  │ Spin WASM :80  │  Dapr :3500    │          │
+│  │ (raw_exec)     │  (docker)      │          │
+│  │ --from-registry ghcr.io/...     │          │
+│  └──────────────────────────────────┘          │
+│                                                 │
+│  Job: spin-js-app (JavaScript)                 │
+│  ┌──────────────────────────────────┐          │
+│  │ Spin WASM :80  │  Dapr :3501    │          │
+│  │ (raw_exec)     │  (docker)      │          │
+│  │ --from-registry ghcr.io/...     │          │
+│  └──────────────────────────────────┘          │
+│                                                 │
+│  Job: redis          (:6379)                   │
+│  Job: registry       (:15000)                  │
+│  Job: dapr-placement (:50000)                  │
+│                                                 │
+│  Nomad UI: http://localhost:4646               │
+└─────────────────────────────────────────────────┘
+                      │
+                      ▼
+        [Redis / Kafka / DynamoDB / ...]
 ```
 
 | 服务 | 端口 | 作用 |
 |---|---|---|
-| `spin-webhost` (WASM) | 80 (内部) | 运行你的业务代码（raw_exec driver） |
-| `dapr-sidecar` | 3500 | Dapr API 网关，所有基础设施操作的统一入口 |
+| `spin-app` (Rust WASM) | 80 (内部) | Rust 业务代码，raw_exec driver |
+| `spin-js-app` (JS WASM) | 80 (内部) | JavaScript 业务代码，raw_exec driver |
+| `dapr-sidecar` (Rust) | 3500 | Rust App 的 Dapr API 网关 |
+| `dapr-sidecar` (JS) | 3501 | JS App 的 Dapr API 网关 |
 | `redis` | 6379 | 默认状态存储 & 消息队列后端 |
-| `dapr-dashboard` | 8080 | 可视化管理面板 |
 | `dapr-placement` | 50000 | Actor 放置服务 |
-| `registry` | 15000 | 本地 OCI 镜像仓库 |
+| `registry` | 15000 | 本地 OCI 镜像仓库（备用） |
 
 ---
 
 ## ⚙️ 换基础设施？改 YAML，不改代码
 
-这是"零厂商锁定"的实际含义。你的 `lib.rs` 永远只向 `localhost:3500` 发请求，后端是什么由 `dapr/components/*.yaml` 决定：
+你的业务代码永远只向 Dapr sidecar 发请求，后端是什么由 Nomad HCL 中的 Dapr component template 决定：
 
 <details>
 <summary>当前默认：Redis</summary>
 
 ```yaml
-# dapr/components/statestore.yaml
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
@@ -192,7 +241,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "redis:6379"
+      value: "172.26.64.1:6379"
 ```
 </details>
 
@@ -271,111 +320,108 @@ spec:
 
 ```text
 .
-├── spin-app/
-│   ├── src/lib.rs              # 🧠 唯一需要 AI 写的文件
-│   ├── Cargo.toml              # 依赖：spin-sdk + anyhow，仅此而已
-│   ├── spin.toml               # 路由 & 网络权限配置
-│   └── run.sh                  # Spin 启动脚本
-├── dapr/
-│   ├── components/
-│   │   ├── statestore.yaml     # 状态存储后端配置
-│   │   └── pubsub.yaml         # 消息队列后端配置
-│   └── config/config.yaml      # 追踪、指标、日志
-├── nomad/
-│   ├── spin-app.nomad.hcl      # Spin WASM (raw_exec) + Dapr Sidecar (docker)
-│   ├── redis.nomad.hcl         # Redis 服务
-│   ├── dapr-placement.nomad.hcl # Dapr Placement 服务
-│   ├── dapr-dashboard.nomad.hcl # Dapr Dashboard
-│   └── registry.nomad.hcl      # 本地 OCI 镜像仓库
-├── deploy-nomad.sh             # Nomad 一键部署脚本
+├── spin-rust-app/                    # Rust WASM 应用
+│   ├── src/lib.rs                    # 🧠 业务逻辑
+│   ├── Cargo.toml                    # 依赖：spin-sdk + anyhow
+│   ├── spin.toml                     # Spin 路由配置
+│   ├── spin-rust-app.nomad.hcl       # Nomad Job 定义（Spin + Dapr sidecar）
+│   └── deploy.ps1                    # 一键部署脚本（PowerShell）
+│
+├── spin-js-app/                      # JavaScript WASM 应用
+│   ├── src/index.js                  # 🧠 业务逻辑
+│   ├── package.json                  # 依赖：itty-router + spin SDK
+│   ├── build.mjs                     # esbuild 构建脚本
+│   ├── spin.toml                     # Spin 路由配置
+│   ├── spin-js-app.nomad.hcl         # Nomad Job 定义（Spin + Dapr sidecar）
+│   └── deploy.ps1                    # 一键部署脚本（PowerShell）
+│
+├── nomad/                            # 基础设施 Nomad Jobs
+│   ├── redis.nomad.hcl               # Redis 服务
+│   ├── dapr-placement.nomad.hcl      # Dapr Placement 服务
+│   └── registry.nomad.hcl            # 本地 OCI 镜像仓库
+│
+├── .env.ps1                          # 🔒 ghcr.io 凭证（gitignored）
+├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 🚢 Nomad 部署
-
-比 K8s 轻量得多，单二进制文件，dev 模式秒启动。
+## 🚢 部署详解
 
 ### 前置条件
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Nomad](https://developer.hashicorp.com/nomad/install)
-- [Rust](https://rustup.rs/) + `rustup target add wasm32-wasip1`
-- [Fermyon Spin CLI](https://developer.fermyon.com/spin/v2/install)
+- Windows + WSL2
+- WSL 中安装：[Docker](https://docs.docker.com/get-docker/)、[Nomad](https://developer.hashicorp.com/nomad/install)、[Fermyon Spin v3.6.2](https://developer.fermyon.com/spin/v2/install)
+- Windows 中安装：[Fermyon Spin v3.6.2](https://developer.fermyon.com/spin/v2/install)（用于构建和推送）
+- Rust App 额外需要：[Rust](https://rustup.rs/) + `rustup target add wasm32-wasip1`
+- JS App 额外需要：[Node.js](https://nodejs.org/)
+- [GitHub Container Registry](https://ghcr.io) 账号 + Personal Access Token
 
-### 快速部署
+### 凭证配置
+
+在项目根目录创建 `.env.ps1`（已 gitignore）：
+
+```powershell
+$GhcrUser = "your-github-username"
+$GhcrToken = "ghp_your_personal_access_token"
+```
+
+WSL 中也需要登录一次（Nomad raw_exec 拉取时需要）：
 
 ```bash
-# 1. 启动 Nomad dev 模式（另开一个终端）
-nomad agent -dev
-
-# 2. 部署基础设施
-nomad job run nomad/redis.nomad.hcl
-nomad job run nomad/dapr-placement.nomad.hcl
-nomad job run nomad/registry.nomad.hcl
-
-# 3. 构建并部署应用
-bash deploy-nomad.sh
-
-# 4. 验证
-curl http://localhost:3500/v1.0/invoke/spin-app/method/health
-
-# 5. 停止全部服务
-bash deploy-nomad.sh stop
+/usr/local/bin/spin registry login ghcr.io -u <username> -p <token>
 ```
 
-### deploy-nomad.sh 用法
+### 部署流程
 
-```bash
-bash deploy-nomad.sh            # 构建 WASM 并部署应用 + Dashboard
-bash deploy-nomad.sh app-only   # 只重新部署 spin-app（跳过构建）
-bash deploy-nomad.sh stop       # 停止并清除全部 Nomad jobs
+```powershell
+# 部署 JS App
+.\spin-js-app\deploy.ps1
+
+# 部署 Rust App
+.\spin-rust-app\deploy.ps1
+
+# 停止某个 App
+.\spin-js-app\deploy.ps1 -Action stop
+.\spin-rust-app\deploy.ps1 -Action stop
 ```
 
-### Nomad 架构
+deploy.ps1 执行流程：
+1. 本地编译 WASM（`npm run build` 或 `spin build`）
+2. 登录 ghcr.io 并推送 OCI 镜像
+3. 通过 Nomad HTTP API（localhost:4646）提交 Job
+4. Force reschedule 确保更新生效
 
-```text
-┌──────────────── Nomad (dev mode) ────────────────┐
-│                                                   │
-│  Job: spin-app (group: spin-dapr)                │
-│  ┌─────────────────────────────────────┐          │
-│  │  Task: spin-webhost  │ Task: daprd  │          │
-│  │  (raw_exec :80)      │ (docker:3500)│          │
-│  │  共享网络 namespace                   │          │
-│  └─────────────────────────────────────┘          │
-│                                                   │
-│  Job: redis          (:6379)                      │
-│  Job: registry       (:15000)                     │
-│  Job: dapr-placement (:50000)                     │
-│  Job: dapr-dashboard (:8080)                      │
-│                                                   │
-│  Nomad UI: http://localhost:4646                  │
-└───────────────────────────────────────────────────┘
-```
+### Nomad 架构说明
 
-### 常用命令
+每个应用是一个 Nomad Job，包含两个 Task 共享 bridge 网络 namespace：
+
+- `spin-webhost`（raw_exec）：从 ghcr.io 拉取 WASM 镜像，监听 namespace 内部 `:80`
+- `dapr-sidecar`（docker）：Dapr 进程，连接 Spin 的 `:80`，对外暴露 Dapr HTTP 端口
+
+bridge 模式确保 Spin 和 Dapr 在同一网络空间，外部只能通过 Dapr 端口访问。
+
+### 常用命令（WSL）
 
 ```bash
 # 查看所有 job 状态
 nomad job status
 
-# 查看 spin-app 详情
+# 查看某个 app 详情
+nomad job status spin-js-app
 nomad job status spin-app
 
-# 查看日志
+# 查看 alloc 日志
 nomad alloc logs <alloc-id> spin-webhost
 nomad alloc logs <alloc-id> dapr-sidecar
-
-# 扩缩容（修改 count 后）
-nomad job run nomad/spin-app.nomad.hcl
 ```
 
 ---
 
 ## 🤝 贡献
 
-欢迎 PR：更多语言模板 (Go/TinyGo, JS/QuickJS)、更多 Dapr 组件配置、文档改进、Bug 报告。
+欢迎 PR：更多语言模板 (Go/TinyGo, Python)、更多 Dapr 组件配置、文档改进、Bug 报告。
 
 ## 📜 License
 
