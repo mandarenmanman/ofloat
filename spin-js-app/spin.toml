@@ -1,0 +1,21 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["aGentleKnife <1793575354@qq.com>"]
+description = ""
+name = "spin-js-app"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "spin-js-app"
+
+[component.spin-js-app]
+source = "dist/spin-js-app.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+    "http://127.0.0.1:3500",
+]
+[component.spin-js-app.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.js"]

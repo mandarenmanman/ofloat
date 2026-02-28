@@ -38,9 +38,9 @@
 | 层 | 谁负责 | 关心什么 |
 |---|---|---|
 | 业务逻辑 | AI / 开发者 | 只写 HTTP handler，向 `localhost:3500` 发请求 |
-| 运行时沙箱 | Spin (WASM) | 微秒启动、内存隔离、`FROM scratch` 极简镜像 |
+| 运行时沙箱 | Spin (WASM) | 微秒启动、内存隔离、极简二进制 |
 | 基础设施 | Dapr Sidecar | 状态存储、消息队列、分布式追踪，全部通过 HTTP API 暴露 |
-| 编排部署 | Docker Compose | `bash deploy.sh` 一键搞定 |
+| 编排部署 | Nomad | `bash deploy-nomad.sh` 一键搞定 |
 
 ---
 
@@ -92,13 +92,22 @@ spin-sdk = "5.2.0"
 
 这就是 AI 需要理解的全部上下文。
 
-### Step 2 — 一键部署
+### Step 2 — 一键部署（Nomad）
 
 ```bash
-bash deploy.sh
+# 1. 启动 Nomad dev 模式（另开一个终端）
+nomad agent -dev
+
+# 2. 先部署基础设施（redis、placement、registry）
+nomad job run nomad/redis.nomad.hcl
+nomad job run nomad/dapr-placement.nomad.hcl
+nomad job run nomad/registry.nomad.hcl
+
+# 3. 构建并部署应用
+bash deploy-nomad.sh
 ```
 
-脚本自动完成：编译 WASM → 推送到本地 OCI Registry → 启动 Spin + Dapr + Redis + Dashboard。
+脚本自动完成：编译 WASM → 部署文件到 `/opt/spin-app` → 启动 Spin + Dapr Sidecar + Dashboard。
 
 ### Step 3 — 验证
 
@@ -109,6 +118,9 @@ curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 
 # Dapr Dashboard（浏览器打开）
 # → http://localhost:8080
+
+# Nomad UI（浏览器打开）
+# → http://localhost:4646
 ```
 
 **整个过程：写一个函数 → 跑一个脚本 → curl 验证。没了。**
@@ -136,7 +148,7 @@ curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 [User / AI Agent]
        │  只写 HTTP handler
        ▼
-┌──────────── Docker Compose ────────────┐
+┌──────────── Nomad (dev mode) ──────────┐
 │                                        │
 │  Spin Engine          Dapr Sidecar     │
 │  ┌──────────┐   HTTP  ┌──────────┐    │
@@ -144,21 +156,21 @@ curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 │  │(AI Code) │         │Components│    │
 │  │  :80     │         │  :3500   │    │
 │  └──────────┘         └──────────┘    │
+│  (raw_exec)           (docker)        │
 │                             │          │
 └─────────────────────────────┼──────────┘
                               ▼
             [Redis / Kafka / DynamoDB / ...]
 ```
 
-
 | 服务 | 端口 | 作用 |
 |---|---|---|
-| `spin-webhost` (WASM) | 80 (内部) | 运行你的业务代码 |
-| `spin-dapr-sidecar` | 3500 | Dapr API 网关，所有基础设施操作的统一入口 |
+| `spin-webhost` (WASM) | 80 (内部) | 运行你的业务代码（raw_exec driver） |
+| `dapr-sidecar` | 3500 | Dapr API 网关，所有基础设施操作的统一入口 |
 | `redis` | 6379 | 默认状态存储 & 消息队列后端 |
 | `dapr-dashboard` | 8080 | 可视化管理面板 |
 | `dapr-placement` | 50000 | Actor 放置服务 |
-| `registry` | 5000 | 本地 OCI 镜像仓库 |
+| `registry` | 15000 | 本地 OCI 镜像仓库 |
 
 ---
 
@@ -262,65 +274,66 @@ spec:
 ├── spin-app/
 │   ├── src/lib.rs              # 🧠 唯一需要 AI 写的文件
 │   ├── Cargo.toml              # 依赖：spin-sdk + anyhow，仅此而已
-│   ├── spin.toml               # 路由 & 网络权限（开发用）
-│   ├── spin-docker.toml        # Docker 内配置（生产用）
-│   └── Dockerfile              # FROM scratch 极简镜像
+│   ├── spin.toml               # 路由 & 网络权限配置
+│   └── run.sh                  # Spin 启动脚本
 ├── dapr/
 │   ├── components/
-│   │   ├── statestore.yaml     # 状态存储后端（Docker Compose 用）
-│   │   └── pubsub.yaml         # 消息队列后端（Docker Compose 用）
+│   │   ├── statestore.yaml     # 状态存储后端配置
+│   │   └── pubsub.yaml         # 消息队列后端配置
 │   └── config/config.yaml      # 追踪、指标、日志
-├── nomad/                      # Nomad Job 定义
+├── nomad/
+│   ├── spin-app.nomad.hcl      # Spin WASM (raw_exec) + Dapr Sidecar (docker)
 │   ├── redis.nomad.hcl         # Redis 服务
-│   ├── spin-app.nomad.hcl      # Spin WASM + Dapr Sidecar
 │   ├── dapr-placement.nomad.hcl # Dapr Placement 服务
-│   └── dapr-dashboard.nomad.hcl # Dapr Dashboard
-├── docker-compose.yml          # Docker Compose 编排（本地开发）
-├── deploy.sh                   # Docker Compose 一键部署
-├── deploy-nomad.sh             # Nomad 一键部署
+│   ├── dapr-dashboard.nomad.hcl # Dapr Dashboard
+│   └── registry.nomad.hcl      # 本地 OCI 镜像仓库
+├── deploy-nomad.sh             # Nomad 一键部署脚本
 └── README.md
 ```
 
 ---
 
-## 🚢 部署方式
-
-### 方式一：Docker Compose（本地开发）
-
-```bash
-bash deploy.sh
-```
-
-详见上方 [端到端体验](#-端到端体验从-prompt-到生产) 章节。
-
-### 方式二：Nomad（轻量编排）
+## 🚢 Nomad 部署
 
 比 K8s 轻量得多，单二进制文件，dev 模式秒启动。
 
-#### 前置条件
+### 前置条件
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Nomad](https://developer.hashicorp.com/nomad/install)
 - [Rust](https://rustup.rs/) + `rustup target add wasm32-wasip1`
 - [Fermyon Spin CLI](https://developer.fermyon.com/spin/v2/install)
 
-#### 快速部署
+### 快速部署
 
 ```bash
 # 1. 启动 Nomad dev 模式（另开一个终端）
 nomad agent -dev
 
-# 2. 一键部署
+# 2. 部署基础设施
+nomad job run nomad/redis.nomad.hcl
+nomad job run nomad/dapr-placement.nomad.hcl
+nomad job run nomad/registry.nomad.hcl
+
+# 3. 构建并部署应用
 bash deploy-nomad.sh
 
-# 3. 验证
+# 4. 验证
 curl http://localhost:3500/v1.0/invoke/spin-app/method/health
 
-# 4. 停止
+# 5. 停止全部服务
 bash deploy-nomad.sh stop
 ```
 
-#### Nomad 架构
+### deploy-nomad.sh 用法
+
+```bash
+bash deploy-nomad.sh            # 构建 WASM 并部署应用 + Dashboard
+bash deploy-nomad.sh app-only   # 只重新部署 spin-app（跳过构建）
+bash deploy-nomad.sh stop       # 停止并清除全部 Nomad jobs
+```
+
+### Nomad 架构
 
 ```text
 ┌──────────────── Nomad (dev mode) ────────────────┐
@@ -328,11 +341,12 @@ bash deploy-nomad.sh stop
 │  Job: spin-app (group: spin-dapr)                │
 │  ┌─────────────────────────────────────┐          │
 │  │  Task: spin-webhost  │ Task: daprd  │          │
-│  │  (WASM :80)          │ (:3500)      │          │
+│  │  (raw_exec :80)      │ (docker:3500)│          │
 │  │  共享网络 namespace                   │          │
 │  └─────────────────────────────────────┘          │
 │                                                   │
 │  Job: redis          (:6379)                      │
+│  Job: registry       (:15000)                     │
 │  Job: dapr-placement (:50000)                     │
 │  Job: dapr-dashboard (:8080)                      │
 │                                                   │
@@ -340,7 +354,7 @@ bash deploy-nomad.sh stop
 └───────────────────────────────────────────────────┘
 ```
 
-#### 常用命令
+### 常用命令
 
 ```bash
 # 查看所有 job 状态
@@ -356,14 +370,6 @@ nomad alloc logs <alloc-id> dapr-sidecar
 # 扩缩容（修改 count 后）
 nomad job run nomad/spin-app.nomad.hcl
 ```
-
----
-
-## 前置依赖
-
-- [Docker](https://docs.docker.com/get-docker/) & Docker Compose
-- [Rust](https://rustup.rs/) + WASM 编译目标：`rustup target add wasm32-wasip1`
-- [Fermyon Spin CLI](https://developer.fermyon.com/spin/v2/install)
 
 ---
 
