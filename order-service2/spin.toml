@@ -1,0 +1,18 @@
+spin_manifest_version = 2
+
+[application]
+name = "order-service2"
+version = "0.1.0"
+authors = ["aGentleKnife <1793575354@qq.com>"]
+description = "Order Service - CRUD operations"
+
+[[trigger.http]]
+route = "/..."
+component = "order-service2"
+
+[component.order-service2]
+source = "dist/order-service2.wasm"
+allowed_outbound_hosts = ["http://127.0.0.1:3503"]
+[component.order-service2.build]
+command = "npm run build"
+watch = ["src/**/*.js", "package.json"]

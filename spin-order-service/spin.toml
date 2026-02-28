@@ -1,0 +1,21 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["aGentleKnife <1793575354@qq.com>"]
+description = ""
+name = "spin-order-service"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "spin-order-service"
+
+[component.spin-order-service]
+source = "dist/spin-order-service.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+    "http://127.0.0.1:3502",
+]
+[component.spin-order-service.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.js"]

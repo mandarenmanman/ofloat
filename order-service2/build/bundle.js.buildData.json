@@ -1,0 +1,6 @@
+{
+  "version": "0.19.3",
+  "checksum": "c76ef26dce5cd052dbda97f1881dfd128a58cec80de77ac7908555aed3b194df",
+  "runtimeArgs": "--init-location http://order-service2.localhost",
+  "targetWitChecksum": "41c888ac4a6ec02a21a5552854f1382bc16c865070163d574a050db3b41bbc48"
+}
