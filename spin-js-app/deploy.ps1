@@ -3,7 +3,13 @@ param([string]$Action = "deploy")
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
-$Registry = "localhost:15000"
+$GhcrUser = ""
+$GhcrToken = ""
+# Load credentials from project root .env.ps1 (not committed to git)
+$envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
+if (Test-Path $envFile) { . $envFile }
+$Registry = "ghcr.io/mandarenmanman"
+$ImageTag = "spin-js-app:latest"
 $NomadAddr = "http://localhost:4646"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
@@ -21,14 +27,15 @@ Push-Location $ScriptDir
 npm run build
 Pop-Location
 
-# 2. push to OCI registry
-Info "=== Push to Registry ==="
+# 2. login & push to ghcr.io
+Info "=== Push to ghcr.io ==="
+& $SpinExe registry login ghcr.io -u $GhcrUser -p $GhcrToken
 Push-Location $ScriptDir
-& $SpinExe registry push "$Registry/spin-js-app:latest" --insecure
+& $SpinExe registry push "$Registry/${ImageTag}"
 Pop-Location
-Info "Pushed to $Registry/spin-js-app:latest"
+Info "Pushed to $Registry/${ImageTag}"
 
-# 3. submit nomad job via API
+# 4. submit nomad job via API
 Info "=== Submit Nomad Job ==="
 $hcl = [System.IO.File]::ReadAllText("$ScriptDir\spin-js-app.nomad.hcl")
 $escaped = ($hcl | ConvertTo-Json)

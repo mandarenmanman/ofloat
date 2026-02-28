@@ -2,7 +2,14 @@ param([string]$Action = "deploy")
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$DeployDir = "/opt/spin-app"
+$SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
+$GhcrUser = ""
+$GhcrToken = ""
+# Load credentials from project root .env.ps1 (not committed to git)
+$envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
+if (Test-Path $envFile) { . $envFile }
+$Registry = "ghcr.io/mandarenmanman"
+$ImageTag = "spin-rust-app:latest"
 $NomadAddr = "http://localhost:4646"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
@@ -17,18 +24,18 @@ if ($Action -eq "stop") {
 # 1. build
 Info "=== Build ==="
 Push-Location $ScriptDir
-E:\spin-v3.6.2-windows-amd64\spin.exe build
+& $SpinExe build
 Pop-Location
 
-# 2. deploy files to WSL
-Info "=== Deploy files ==="
-$wslPath = ($ScriptDir -replace '\\','/')
-$driveLetter = $wslPath.Substring(0,1).ToLower()
-$wslPath = "/mnt/$driveLetter" + $wslPath.Substring(2)
-wsl bash -c "mkdir -p $DeployDir/target/wasm32-wasip1/release; cp '$wslPath/spin.toml' $DeployDir/; cp '$wslPath/target/wasm32-wasip1/release/spin_app.wasm' $DeployDir/target/wasm32-wasip1/release/"
-Info "Files deployed"
+# 2. login & push to ghcr.io
+Info "=== Push to ghcr.io ==="
+& $SpinExe registry login ghcr.io -u $GhcrUser -p $GhcrToken
+Push-Location $ScriptDir
+& $SpinExe registry push "$Registry/${ImageTag}"
+Pop-Location
+Info "Pushed to $Registry/${ImageTag}"
 
-# 2. submit nomad job via API
+# 3. submit nomad job via API
 Info "=== Submit Nomad Job ==="
 $hcl = [System.IO.File]::ReadAllText("$ScriptDir\spin-rust-app.nomad.hcl")
 $escaped = ($hcl | ConvertTo-Json)
@@ -48,7 +55,6 @@ Remove-Item $tmpParse, $tmpSubmit -ErrorAction SilentlyContinue
 
 if ($result.EvalID) {
     Info "Deployed! EvalID: $($result.EvalID)"
-    # Force restart to pick up new wasm files
     curl.exe -s -X POST "$NomadAddr/v1/job/spin-app/evaluate?ForceReschedule=true" | Out-Null
     Info "Force restarted allocations"
 } else {

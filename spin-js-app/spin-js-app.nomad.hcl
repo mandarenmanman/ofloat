@@ -6,14 +6,14 @@ job "spin-js-app" {
     count = 1
 
     network {
+      mode = "bridge"
       port "dapr-http" {
         static = 3501
+        to     = 3501
       }
       port "dapr-grpc" {
         static = 50002
-      }
-      port "app" {
-        static = 8081
+        to     = 50002
       }
     }
 
@@ -22,7 +22,7 @@ job "spin-js-app" {
 
       config {
         command = "/usr/local/bin/spin"
-        args    = ["up", "--from-registry", "172.26.64.1:15000/spin-js-app:latest", "--listen", "127.0.0.1:8081", "--insecure"]
+        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-js-app:latest", "--listen", "127.0.0.1:80"]
       }
 
       resources {
@@ -35,17 +35,16 @@ job "spin-js-app" {
       driver = "docker"
 
       config {
-        image        = "daprio/daprd:1.16.9"
-        force_pull   = false
-        command      = "./daprd"
-        network_mode = "host"
+        image      = "daprio/daprd:1.16.9"
+        force_pull = false
+        command    = "./daprd"
         args = [
           "-app-id", "spin-js-app",
-          "-app-port", "8081",
+          "-app-port", "80",
           "-dapr-http-port", "3501",
           "-dapr-grpc-port", "50002",
           "-metrics-port", "9092",
-          "-placement-host-address", "localhost:50000",
+          "-placement-host-address", "172.26.64.1:50000",
           "-resources-path", "/local/components",
           "-config", "/local/config/config.yaml",
         ]
@@ -62,7 +61,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "localhost:6379"
+      value: "172.26.64.1:6379"
     - name: redisPassword
       value: ""
     - name: actorStateStore
@@ -82,7 +81,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "localhost:6379"
+      value: "172.26.64.1:6379"
     - name: redisPassword
       value: ""
 EOF

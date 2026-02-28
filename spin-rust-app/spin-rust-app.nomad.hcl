@@ -25,7 +25,7 @@ job "spin-app" {
 
       config {
         command = "/usr/local/bin/spin"
-        args    = ["up", "--from", "/opt/spin-app/spin.toml", "--listen", "127.0.0.1:80"]
+        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-rust-app:latest", "--listen", "127.0.0.1:80"]
       }
 
       resources {
