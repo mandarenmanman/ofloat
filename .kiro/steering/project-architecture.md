@@ -68,3 +68,20 @@ nomad/                  # 基础设施
 - Nomad Job 通过 HTTP API (localhost:4646) 提交，不用 nomad CLI
 - 凭证在根目录 `.env.ps1` 中，已 gitignore
 - Nomad 运行在 WSL 中，Spin 用 raw_exec driver 从 ghcr.io 拉取 WASM
+
+## Nomad Job 注意事项
+
+### 内存配置
+- Spin WASM 进程在启动阶段（"Preparing Wasm modules"）内存消耗较高，如果 Nomad 分配的内存不足，进程会被 OOM Kill（Exit Code 137）
+- JS WASM 应用启动内存开销比 Rust 大，`spin-webhost` task 建议：
+  - Rust 应用：`memory = 256`，`memory_max = 512`
+  - JS 应用：`memory = 512`，`memory_max = 1024`
+- Dapr sidecar task 建议 `memory = 256`，最低不低于 128
+
+### Dapr Sidecar 配置要点
+- Docker 镜像必须用 `daprio/daprd`（运行时），不要用 `daprio/dapr`（基础镜像）
+- command 必须是 `./daprd`，不要用 `./placement`（那是放置服务）
+- daprd 参数用单横线 `-app-id`，不要用双横线 `--app-id`
+- 必须通过 template 挂载 component 文件（statestore.yaml、pubsub.yaml）和 config.yaml，否则 Dapr 无法连接 Redis
+- `-placement-host-address` 使用 `172.26.64.1:50000`
+- 每个服务的 `-metrics-port` 必须不同，避免冲突

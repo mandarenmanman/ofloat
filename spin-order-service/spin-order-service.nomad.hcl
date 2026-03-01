@@ -27,7 +27,8 @@ job "spin-order-service" {
 
       resources {
         cpu    = 200
-        memory = 512
+        memory     = 513
+        memory_max = 1024
       }
     }
 
