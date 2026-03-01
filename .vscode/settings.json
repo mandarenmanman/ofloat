@@ -1,7 +1,9 @@
 {
     "kiroAgent.trustedCommands": [
         "mvn --version",
-        "powershell *deploy.ps1",
-        "wsl curl *"
+        "powershell -ExecutionPolicy Bypass -File **",
+        "wsl curl *",
+        "powershell *",
+        "Start-Sleep -Seconds 10; wsl curl -s *"
     ]
 }

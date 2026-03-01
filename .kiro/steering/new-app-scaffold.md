@@ -11,9 +11,7 @@ inclusion: manual
 向用户确认：
 - 应用名称（例如 `order-service`，最终目录为 `spin-order-service/`）
 - 语言选择：Rust / JavaScript / TypeScript / Go / Python
-- Dapr 端口（当前已占用：3500, 3501, 3502, 3504, 3505, 3506，按顺序分配下一个）
-- Dapr gRPC 端口（当前已占用：50001-50008）
-- Metrics 端口（当前已占用：9091-9098）
+- Dapr 端口、gRPC 端口、Metrics 端口：查看 `project-architecture.md` 中记录的最后已用端口，在此基础上 +1 累加分配
 
 ## 1.1 语言编码规范
 
@@ -257,4 +255,4 @@ app.wasm
 
 ## 8. 更新全局 steering
 
-创建完成后，更新 `.kiro/steering/project-architecture.md` 中的端口占用列表，以及本文件中的端口占用列表。
+创建完成后，更新 `.kiro/steering/project-architecture.md` 中的最后已用端口记录（Dapr HTTP、gRPC、metrics 各 +1）。

@@ -1,0 +1,20 @@
+spin_manifest_version = 2
+
+[application]
+name = "spin-payment8-service"
+version = "0.1.0"
+description = "TypeScript WASM payment service with Dapr sidecar - state store & service invocation"
+
+[[trigger.http]]
+route = "/..."
+component = "spin-payment8-service"
+
+[component.spin-payment8-service]
+source = "dist/spin-payment8-service.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+    "http://127.0.0.1:3515",
+]
+[component.spin-payment8-service.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]

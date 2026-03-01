@@ -49,6 +49,9 @@ inclusion: always
 - spin-ts-app (TS): 3505
 - spin-python-app (Python): 3506
 - spin-user-service (Go): 3507
+- spin-payment8-service (TS): 3515
+- spin-dev-service (Go): 3516
+- spin-regist-service (Go): 3517
 
 ## 项目结构
 
@@ -100,10 +103,10 @@ nomad/                  # 基础设施
 如果用户要创建新的 Spin 应用，按以下模式：
 1. 在项目根目录创建 `spin-{name}/` 目录
 2. 复制对应语言模板的结构（Rust 或 JS）
-3. 分配新的 Dapr 端口（当前已用：3500, 3501, 3502）
+3. 分配新的 Dapr 端口（在最后已用端口基础上 +1 累加）
 4. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
 5. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
-6. 当前已用 Dapr 端口：3500, 3501, 3502, 3504, 3505, 3506, 3507；gRPC 端口：50001-50008；metrics 端口：9091-9098
+6. 最后已用端口：Dapr HTTP 端口：3517；gRPC 端口：50018；metrics 端口：9108。新增应用时在对应端口上 +1 累加，并更新此记录
 
 ## 部署相关
 
