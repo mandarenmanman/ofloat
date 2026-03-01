@@ -14,7 +14,9 @@ component = "spin-app"
 
 [component.spin-app]
 source = "target/wasm32-wasip1/release/spin_app.wasm"
-allowed_outbound_hosts = []
+allowed_outbound_hosts = [
+    "http://127.0.0.1:3500",
+]
 [component.spin-app.build]
 command = "cargo build --target wasm32-wasip1 --release"
 watch = ["src/**/*.rs", "Cargo.toml"]
