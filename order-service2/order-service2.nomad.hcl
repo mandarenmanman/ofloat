@@ -26,9 +26,9 @@ job "order-service2" {
       }
 
       resources {
-        cpu    = 200
-        memory     = 512
-        memory_max = 1024
+        cpu    = 500
+        memory     = 2048
+        memory_max = 4096
       }
     }
 

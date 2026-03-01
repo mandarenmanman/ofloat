@@ -75,7 +75,7 @@ nomad/                  # 基础设施
 - Spin WASM 进程在启动阶段（"Preparing Wasm modules"）内存消耗较高，如果 Nomad 分配的内存不足，进程会被 OOM Kill（Exit Code 137）
 - JS WASM 应用启动内存开销比 Rust 大，`spin-webhost` task 建议：
   - Rust 应用：`memory = 256`，`memory_max = 512`
-  - JS 应用：`memory = 512`，`memory_max = 1024`
+  - JS 应用：`memory = 512`，`memory_max = 2048`
 - Dapr sidecar task 建议 `memory = 256`，最低不低于 128
 
 ### Dapr Sidecar 配置要点

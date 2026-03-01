@@ -1,25 +1,66 @@
-# 部署 order-service2 到 Nomad
+param([string]$Action = "deploy")
 
-$IMAGE_NAME = "ghcr.io/mandarenmanman/order-service2"
-$TAG = "latest"
+$ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
+$GhcrUser = ""
+$GhcrToken = ""
+# Load credentials from project root .env.ps1 (not committed to git)
+$envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
+if (Test-Path $envFile) { . $envFile }
+$Registry = "ghcr.io/mandarenmanman"
+$ImageTag = "order-service2:latest"
+$NomadAddr = "http://localhost:4646"
 
-Write-Host "🔨 构建 WASM 模块..."
-spin build
+function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
-Write-Host "📦 推送到容器 registry..."
-# 需要根据实际情况调整推送命令
-# spin registry push $IMAGE_NAME:$TAG
+if ($Action -eq "stop") {
+    Info "stopping order-service2..."
+    curl.exe -s -X DELETE "$NomadAddr/v1/job/order-service2?purge=true" | Out-Null
+    Info "stopped"
+    exit 0
+}
 
-Write-Host "🚀 部署到 Nomad..."
-nomad job run order-service2.nomad.hcl
+# 1. build
+Info "=== Build ==="
+Push-Location $ScriptDir
+npm run build
+Pop-Location
 
-Write-Host "✅ 部署完成!"
-Write-Host "📍 服务地址：http://localhost:8082"
+# 2. login & push to ghcr.io
+Info "=== Push to ghcr.io ==="
+& $SpinExe registry login ghcr.io -u $GhcrUser -p $GhcrToken
+Push-Location $ScriptDir
+& $SpinExe registry push "$Registry/${ImageTag}"
+Pop-Location
+Info "Pushed to $Registry/${ImageTag}"
+
+# 3. submit nomad job via API
+Info "=== Submit Nomad Job ==="
+$hcl = [System.IO.File]::ReadAllText("$ScriptDir\order-service2.nomad.hcl")
+$escaped = ($hcl | ConvertTo-Json)
+$parseBody = '{"JobHCL":' + $escaped + ',"Canonicalize":true}'
+$tmpParse = [System.IO.Path]::GetTempFileName()
+$tmpSubmit = [System.IO.Path]::GetTempFileName()
+
+[System.IO.File]::WriteAllBytes($tmpParse, [System.Text.Encoding]::UTF8.GetBytes($parseBody))
+curl.exe -s -X POST "$NomadAddr/v1/jobs/parse" -H "Content-Type: application/json" -d "@$tmpParse" -o $tmpSubmit
+
+$job = [System.IO.File]::ReadAllText($tmpSubmit)
+$envelope = '{"Job":' + $job + '}'
+[System.IO.File]::WriteAllBytes($tmpSubmit, [System.Text.Encoding]::UTF8.GetBytes($envelope))
+$result = curl.exe -s -X POST "$NomadAddr/v1/jobs" -H "Content-Type: application/json" -d "@$tmpSubmit" | ConvertFrom-Json
+
+Remove-Item $tmpParse, $tmpSubmit -ErrorAction SilentlyContinue
+
+if ($result.EvalID) {
+    Info "Deployed! EvalID: $($result.EvalID)"
+    curl.exe -s -X POST "$NomadAddr/v1/job/order-service2/evaluate?ForceReschedule=true" | Out-Null
+    Info "Force restarted allocations"
+} else {
+    Write-Host "Deploy failed: $result" -ForegroundColor Red
+    exit 1
+}
+
 Write-Host ""
-Write-Host "API 端点:"
-Write-Host "  GET    /health          - 健康检查"
-Write-Host "  GET    /orders          - 获取所有订单"
-Write-Host "  GET    /orders/:id      - 获取单个订单"
-Write-Host "  POST   /orders          - 创建订单"
-Write-Host "  PUT    /orders/:id      - 更新订单"
-Write-Host "  DELETE /orders/:id      - 删除订单"
+Info "http://localhost:3503/v1.0/invoke/order-service2/method/health"
