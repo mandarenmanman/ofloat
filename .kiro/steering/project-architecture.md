@@ -13,7 +13,7 @@ inclusion: always
 | Nomad | v1.11.2 | 运行在 WSL 中 |
 | Rust spin-sdk | 5.2.0 | Cargo.toml |
 | Go spin-go-sdk | v2.2.1 | go.mod |
-| TinyGo | 0.40.x | 要求 Go 1.25.x |
+| TinyGo | 0.35.0 | 要求 Go 1.19~1.23（使用 go1.23.6） |
 | JS/TS @spinframework/build-tools | 1.0.4 | package.json |
 | JS/TS @spinframework/wasi-http-proxy | 1.0.0 | package.json |
 | Python spin-sdk | 3.1.0 | requirements.txt |
@@ -48,6 +48,7 @@ inclusion: always
 - spin-go-app (Go): 3504
 - spin-ts-app (TS): 3505
 - spin-python-app (Python): 3506
+- spin-user-service (Go): 3507
 
 ## 项目结构
 
@@ -71,7 +72,7 @@ spin-go-app/            # Go WASM 应用
   go.mod                # 依赖只有 spin-go-sdk
   spin.toml             # Spin 路由配置
   spin-go-app.nomad.hcl # Nomad Job 定义
-  deploy.ps1            # 部署脚本（含 Go 1.25 切换逻辑）
+  deploy.ps1            # 部署脚本（含 Go 1.23 切换逻辑）
 
 spin-ts-app/            # TypeScript WASM 应用
   src/index.ts          # 业务逻辑入口
@@ -102,7 +103,7 @@ nomad/                  # 基础设施
 3. 分配新的 Dapr 端口（当前已用：3500, 3501, 3502）
 4. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
 5. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
-6. 当前已用 Dapr 端口：3500, 3501, 3502, 3504, 3505, 3506；gRPC 端口：50001-50007；metrics 端口：9091-9097
+6. 当前已用 Dapr 端口：3500, 3501, 3502, 3504, 3505, 3506, 3507；gRPC 端口：50001-50008；metrics 端口：9091-9098
 
 ## 部署相关
 

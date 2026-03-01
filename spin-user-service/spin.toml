@@ -15,5 +15,5 @@ allowed_outbound_hosts = [
     "http://127.0.0.1:3507",
 ]
 [component.spin-user-service.build]
-command = "tinygo build -target=wasip1 -gc=leaking -buildmode=c-shared -no-debug -go-compatibility=false -o main.wasm ."
+command = "tinygo build -target=wasip1 -buildmode=c-shared -no-debug -o main.wasm ."
 watch = ["**/*.go", "go.mod"]

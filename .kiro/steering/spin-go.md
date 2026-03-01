@@ -15,10 +15,10 @@ require github.com/spinframework/spin-go-sdk/v2 v2.2.1
 
 ## 工具链要求
 
-- 需要 TinyGo（当前版本 0.40.x，要求 Go 1.25.x）
+- 需要 TinyGo 0.35.0（要求 Go 1.19~1.23，当前使用 go1.23.6）
 - 需要 wasm-opt（通过 `npm install -g binaryen` 安装）
 - 如果系统 Go 版本高于 TinyGo 支持的版本，deploy.ps1 中需要切换 GOROOT 到兼容版本
-- 编译命令：`tinygo build -target=wasip1 -gc=leaking -buildmode=c-shared -no-debug -go-compatibility=false -o main.wasm .`
+- 编译命令：`tinygo build -target=wasip1 -buildmode=c-shared -no-debug -o main.wasm .`
 
 ## 代码模板
 

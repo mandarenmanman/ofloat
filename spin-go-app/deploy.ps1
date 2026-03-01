@@ -1,5 +1,5 @@
 param([string]$Action = "deploy")
-$env:GOROOT = $(go1.25.5 env GOROOT)
+$env:GOROOT = $(go1.23.6 env GOROOT)
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
@@ -22,10 +22,10 @@ if ($Action -eq "stop") {
 
 # 1. build
 Info "=== Build ==="
-# TinyGo requires Go 1.25.x, set GOROOT and prepend Go 1.25 bin to PATH
-$go125root = & go1.25.5 env GOROOT
-$env:GOROOT = $go125root
-$env:PATH = "$go125root\bin;$env:PATH"
+# TinyGo 0.35.0 requires Go 1.19~1.23, set GOROOT and prepend Go 1.23 bin to PATH
+$go123root = & go1.23.6 env GOROOT
+$env:GOROOT = $go123root
+$env:PATH = "$go123root\bin;$env:PATH"
 Push-Location $ScriptDir
 go mod tidy
 & $SpinExe build
