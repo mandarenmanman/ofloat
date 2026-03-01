@@ -10,7 +10,7 @@ fileMatchPattern: "**/*.py"
 只允许 Spin Python SDK，不要添加任何基础设施相关的包：
 
 ```
-spin-sdk==3.2.0
+spin-sdk==3.1.0
 componentize-py==0.13.3
 ```
 

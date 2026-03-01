@@ -16,7 +16,7 @@ inclusion: always
 | TinyGo | 0.40.x | 要求 Go 1.25.x |
 | JS/TS @spinframework/build-tools | 1.0.4 | package.json |
 | JS/TS @spinframework/wasi-http-proxy | 1.0.0 | package.json |
-| Python spin-sdk | 3.2.0 | requirements.txt |
+| Python spin-sdk | 3.1.0 | requirements.txt |
 | Python componentize-py | 0.13.3 | requirements.txt |
 | itty-router (JS/TS) | 5.0.18 | package.json |
 | Node.js | v22.17.0 | 构建 JS/TS 用 |
