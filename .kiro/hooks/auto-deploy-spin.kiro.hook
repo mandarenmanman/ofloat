@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto Deploy Spin App",
+  "description": "当新的 Spin 应用的 deploy.ps1 被创建时，自动执行部署脚本并验证 health 接口",
+  "version": "1",
+  "when": {
+    "type": "fileCreated",
+    "patterns": [
+      "spin-*/deploy.ps1"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "检测到新的 deploy.ps1 已创建。请立即执行以下部署流程：\n1. 如果是 JS/TS 应用，先在对应目录执行 npm install\n2. 执行部署脚本：.\\{对应目录}\\deploy.ps1\n3. 等待部署完成后，用 wsl bash -c \"curl -s http://localhost:{dapr-port}/v1.0/invoke/{app-id}/method/health\" 验证服务是否正常\n4. 部署完成后更新 .kiro/steering/project-architecture.md 中的端口占用列表"
+  }
+}
