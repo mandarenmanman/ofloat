@@ -10,7 +10,7 @@ import (
 	spinhttp "github.com/spinframework/spin-go-sdk/v2/http"
 )
 
-const daprURL = "http://127.0.0.1:3507"
+const daprURL = "http://127.0.0.1:3510"
 
 func init() {
 	spinhttp.Handle(func(w http.ResponseWriter, r *http.Request) {

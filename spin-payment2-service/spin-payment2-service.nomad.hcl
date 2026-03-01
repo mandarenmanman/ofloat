@@ -1,4 +1,4 @@
-job "spin-devcontroller" {
+job "spin-payment2-service" {
   datacenters = ["dc1"]
   type        = "service"
 
@@ -8,12 +8,12 @@ job "spin-devcontroller" {
     network {
       mode = "bridge"
       port "dapr-http" {
-        static = 3510
-        to     = 3510
+        static = 3509
+        to     = 3509
       }
       port "dapr-grpc" {
-        static = 50011
-        to     = 50011
+        static = 50010
+        to     = 50010
       }
     }
 
@@ -22,11 +22,11 @@ job "spin-devcontroller" {
 
       config {
         command = "/usr/local/bin/spin"
-        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-devcontroller:latest", "--listen", "127.0.0.1:80"]
+        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-payment2-service:latest", "--listen", "127.0.0.1:80"]
       }
 
       resources {
-        cpu        = 200
+        cpu    = 200
         memory     = 256
         memory_max = 512
       }
@@ -41,11 +41,11 @@ job "spin-devcontroller" {
         ports        = ["dapr-http", "dapr-grpc"]
         command      = "./daprd"
         args = [
-          "-app-id", "spin-devcontroller",
+          "-app-id", "spin-payment2-service",
           "-app-port", "80",
-          "-dapr-http-port", "3510",
-          "-dapr-grpc-port", "50011",
-          "-metrics-port", "9101",
+          "-dapr-http-port", "3509",
+          "-dapr-grpc-port", "50010",
+          "-metrics-port", "9100",
           "-placement-host-address", "172.26.64.1:50000",
           "-resources-path", "/local/components",
           "-config", "/local/config/config.yaml",
