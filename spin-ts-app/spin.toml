@@ -1,0 +1,21 @@
+spin_manifest_version = 2
+
+[application]
+authors = ["aGentleKnife <1793575354@qq.com>"]
+description = "TypeScript WASM app with Dapr sidecar"
+name = "spin-ts-app"
+version = "0.1.0"
+
+[[trigger.http]]
+route = "/..."
+component = "spin-ts-app"
+
+[component.spin-ts-app]
+source = "dist/spin-ts-app.wasm"
+exclude_files = ["**/node_modules"]
+allowed_outbound_hosts = [
+    "http://127.0.0.1:3505",
+]
+[component.spin-ts-app.build]
+command = ["npm install", "npm run build"]
+watch = ["src/**/*.ts"]

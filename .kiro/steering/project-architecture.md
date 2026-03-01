@@ -4,6 +4,23 @@ inclusion: always
 
 # WasmDapr-AI-Stack 项目架构规则
 
+## 工具链版本
+
+| 工具 | 版本 | 备注 |
+|---|---|---|
+| Spin CLI | v3.6.2 | Windows amd64 |
+| Dapr (daprd) | 1.16.9 | Docker 镜像 `daprio/daprd:1.16.9` |
+| Nomad | v1.11.2 | 运行在 WSL 中 |
+| Rust spin-sdk | 5.2.0 | Cargo.toml |
+| Go spin-go-sdk | v2.2.1 | go.mod |
+| TinyGo | 0.40.x | 要求 Go 1.25.x |
+| JS/TS @spinframework/build-tools | 1.0.4 | package.json |
+| JS/TS @spinframework/wasi-http-proxy | 1.0.0 | package.json |
+| Python spin-sdk | 3.2.0 | requirements.txt |
+| Python componentize-py | 0.13.3 | requirements.txt |
+| itty-router (JS/TS) | 5.0.18 | package.json |
+| Node.js | v22.17.0 | 构建 JS/TS 用 |
+
 ## 核心原则
 
 本项目采用 Spin WASM + Dapr Sidecar 架构，业务代码与基础设施完全解耦。
@@ -28,6 +45,9 @@ inclusion: always
 - spin-app (Rust): 3500
 - spin-js-app (JS): 3501
 - spin-order-service (JS): 3502
+- spin-go-app (Go): 3504
+- spin-ts-app (TS): 3505
+- spin-python-app (Python): 3506
 
 ## 项目结构
 
@@ -46,6 +66,28 @@ spin-js-app/            # JavaScript WASM 应用
   spin-js-app.nomad.hcl # Nomad Job 定义
   deploy.ps1            # 部署脚本
 
+spin-go-app/            # Go WASM 应用
+  main.go               # 业务逻辑入口
+  go.mod                # 依赖只有 spin-go-sdk
+  spin.toml             # Spin 路由配置
+  spin-go-app.nomad.hcl # Nomad Job 定义
+  deploy.ps1            # 部署脚本（含 Go 1.25 切换逻辑）
+
+spin-ts-app/            # TypeScript WASM 应用
+  src/index.ts          # 业务逻辑入口
+  package.json          # 依赖同 JS 应用 + typescript
+  tsconfig.json         # TypeScript 配置
+  spin.toml             # Spin 路由配置
+  spin-ts-app.nomad.hcl # Nomad Job 定义
+  deploy.ps1            # 部署脚本
+
+spin-python-app/        # Python WASM 应用
+  app.py                # 业务逻辑入口
+  requirements.txt      # 依赖只有 spin-sdk + componentize-py
+  spin.toml             # Spin 路由配置
+  spin-python-app.nomad.hcl # Nomad Job 定义
+  deploy.ps1            # 部署脚本（含 venv 创建逻辑）
+
 nomad/                  # 基础设施
   redis.nomad.hcl
   dapr-placement.nomad.hcl
@@ -60,6 +102,7 @@ nomad/                  # 基础设施
 3. 分配新的 Dapr 端口（当前已用：3500, 3501, 3502）
 4. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
 5. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
+6. 当前已用 Dapr 端口：3500, 3501, 3502, 3504, 3505, 3506；gRPC 端口：50001-50007；metrics 端口：9091-9097
 
 ## 部署相关
 
@@ -75,7 +118,9 @@ nomad/                  # 基础设施
 - Spin WASM 进程在启动阶段（"Preparing Wasm modules"）内存消耗较高，如果 Nomad 分配的内存不足，进程会被 OOM Kill（Exit Code 137）
 - JS WASM 应用启动内存开销比 Rust 大，`spin-webhost` task 建议：
   - Rust 应用：`memory = 256`，`memory_max = 512`
-  - JS 应用：`memory = 512`，`memory_max = 2048`
+  - Go 应用：`memory = 256`，`memory_max = 512`（产物小，接近 Rust）
+  - Python 应用：`memory = 512`，`memory_max = 2048`（内嵌 CPython 解释器，接近 JS）
+  - JS/TS 应用：`memory = 512`，`memory_max = 2048`
 - Dapr sidecar task 建议 `memory = 256`，最低不低于 128
 
 ### Dapr Sidecar 配置要点
