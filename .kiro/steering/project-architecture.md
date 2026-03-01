@@ -113,6 +113,13 @@ nomad/                  # 基础设施
 - 凭证在根目录 `.env.ps1` 中，已 gitignore
 - Nomad 运行在 WSL 中，Spin 用 raw_exec driver 从 ghcr.io 拉取 WASM
 
+## 测试与验证
+
+- Nomad、Spin、Dapr sidecar 全部运行在 WSL 中，服务端口绑定在 WSL 的网络命名空间内
+- 从 Windows PowerShell 直接 `curl localhost:{port}` 无法访问 WSL 内的服务
+- 部署后验证服务健康状态，必须通过 WSL 执行请求：`wsl curl -s http://localhost:{dapr-port}/v1.0/invoke/{app-id}/method/health`
+- 绝对不要用 Windows 原生的 `curl.exe` 或 `Invoke-WebRequest` 去测试部署在 WSL/Nomad 中的服务
+
 ## Nomad Job 注意事项
 
 ### 内存配置

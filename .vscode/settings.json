@@ -1,0 +1,7 @@
+{
+    "kiroAgent.trustedCommands": [
+        "mvn --version",
+        "powershell *deploy.ps1",
+        "wsl curl *"
+    ]
+}
