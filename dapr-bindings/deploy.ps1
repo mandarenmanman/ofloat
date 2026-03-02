@@ -1,7 +1,10 @@
 param([string]$Action = "deploy")
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$NomadAddr = "http://localhost:4646"
+$envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
+if (Test-Path $envFile) { . $envFile }
+if (-not $NomadAddr) { $NomadAddr = "http://localhost:4646" }
+if (-not $DufsAddr) { $DufsAddr = "http://localhost:5555" }
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
@@ -34,7 +37,10 @@ Info "Built bindings.wasm"
 
 # 2. Upload WASM to dufs file server
 Info "=== Upload to dufs ==="
-wsl curl -s -T /mnt/c$($ScriptDir.Replace('\','/').Replace('C:',''))/bindings.wasm http://localhost:5555/bindings.wasm
+$wslPath = $ScriptDir -replace '\\','/'
+$wslPath = $wslPath -replace '^([A-Za-z]):','/mnt/$1'
+$wslPath = $wslPath.ToLower().Substring(0,6) + $wslPath.Substring(6)
+wsl curl -s -T "$wslPath/bindings.wasm" $DufsAddr/bindings.wasm
 Info "Uploaded bindings.wasm to dufs"
 
 # 3. Submit Nomad Job via API
