@@ -8,7 +8,8 @@ if (-not $NomadAddr) { $NomadAddr = "http://localhost:4646" }
 $Jobs = @(
     @{ Name = "redis";           File = "redis.nomad.hcl" },
     @{ Name = "dapr-placement";  File = "dapr-placement.nomad.hcl" },
-    @{ Name = "registry";        File = "registry.nomad.hcl" }
+    @{ Name = "registry";        File = "registry.nomad.hcl" },
+    @{ Name = "dufs";            File = "dufs.nomad.hcl" }
 )
 
 function Info($msg)  { Write-Host "[INFO] $msg" -ForegroundColor Green }
@@ -77,6 +78,7 @@ if ($Action -eq "status") {
 }
 
 # deploy
+wsl mkdir -p /opt/dufs-data
 $success = 0
 $failed  = 0
 foreach ($j in $Jobs) {
