@@ -2,15 +2,11 @@ param([string]$Action = "deploy")
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
 $GhcrUser = ""
 $GhcrToken = ""
-# Load credentials from project root .env.ps1 (not committed to git)
 $envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
 if (Test-Path $envFile) { . $envFile }
-$Registry = "ghcr.io/mandarenmanman"
 $ImageTag = "spin-rust-app:latest"
-$NomadAddr = "http://localhost:4646"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
