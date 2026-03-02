@@ -1,0 +1,10 @@
+﻿apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: wasm
+spec:
+  type: bindings.wasm
+  version: v1
+  metadata:
+    - name: file
+      value: "file://./ruby-3.2.0-slim.wasm"
