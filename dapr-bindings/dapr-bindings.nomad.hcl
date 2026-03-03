@@ -46,7 +46,7 @@ spec:
   version: v1
   metadata:
     - name: url
-      value: "http://127.0.0.1:5555/bindings.wasm"
+      value: "http://172.17.0.1:5555/bindings.wasm"
 EOF
         destination = "local/components/wasm-binding.yaml"
       }
