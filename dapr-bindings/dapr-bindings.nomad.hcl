@@ -19,10 +19,10 @@ job "dapr-bindings" {
       driver = "docker"
 
       config {
-        image        = "localhost:15000/daprd:latest"
-        force_pull   = false
-        network_mode = "host"
-        command      = "./daprd"
+        image      = "localhost:15000/daprd:latest"
+        force_pull = false
+        ports      = ["dapr-http", "dapr-grpc"]
+        command    = "./daprd"
         args = [
           "-app-id", "dapr-bindings",
           "-dapr-http-port", "3519",
