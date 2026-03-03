@@ -60,7 +60,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "172.17.0.1:6379"
+      value: "192.168.3.63:6379"
     - name: redisPassword
       value: ""
     - name: actorStateStore
@@ -80,7 +80,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "172.26.64.1:6379"
+      value: "192.168.3.63:6379"
     - name: redisPassword
       value: ""
 EOF
