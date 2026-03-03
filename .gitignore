@@ -1,3 +1,4 @@
 **/.env.ps1
 _tmp_p.json
 *.tmp
+nomad/daprd/daprd

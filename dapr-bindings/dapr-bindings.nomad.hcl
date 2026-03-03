@@ -19,7 +19,7 @@ job "dapr-bindings" {
       driver = "docker"
 
       config {
-        image        = "n5nsx2pw56rzh4.xuanyuan.run/daprio/daprd:1.16.9"
+        image        = "localhost:15000/daprd:latest"
         force_pull   = false
         network_mode = "host"
         command      = "./daprd"
@@ -28,7 +28,7 @@ job "dapr-bindings" {
           "-dapr-http-port", "3519",
           "-dapr-grpc-port", "50020",
           "-metrics-port", "9110",
-          "-placement-host-address", "172.26.64.1:50000",
+          "-placement-host-address", "172.17.0.1:50000",
           "-resources-path", "/local/components",
           "-config", "/local/config/config.yaml",
         ]
