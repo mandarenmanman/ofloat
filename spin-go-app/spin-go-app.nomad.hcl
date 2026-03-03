@@ -6,14 +6,11 @@ job "spin-go-app" {
     count = 1
 
     network {
-      mode = "bridge"
       port "dapr-http" {
         static = 3504
-        to     = 3504
       }
       port "dapr-grpc" {
         static = 50005
-        to     = 50005
       }
     }
 
@@ -36,7 +33,7 @@ job "spin-go-app" {
       driver = "docker"
 
       config {
-        image        = "localhost:15000/daprd:latest "
+        image        = "localhost:15000/daprd:latest"
         force_pull   = false
         ports        = ["dapr-http", "dapr-grpc"]
         command      = "./daprd"
@@ -46,7 +43,7 @@ job "spin-go-app" {
           "-dapr-http-port", "3504",
           "-dapr-grpc-port", "50005",
           "-metrics-port", "9095",
-          "-placement-host-address", "172.26.64.1:50000",
+          "-placement-host-address", "172.17.0.1:50000",
           "-resources-path", "/local/components",
           "-config", "/local/config/config.yaml",
         ]
@@ -63,7 +60,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "172.26.64.1:6379"
+      value: "172.17.0.1:6379"
     - name: redisPassword
       value: ""
     - name: actorStateStore
