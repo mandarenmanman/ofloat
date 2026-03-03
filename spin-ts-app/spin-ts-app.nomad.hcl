@@ -36,7 +36,7 @@ job "spin-ts-app" {
       driver = "docker"
 
       config {
-        image        = "daprio/daprd:1.16.9"
+        image        = "localhost:15000/daprd:latest"
         force_pull   = false
         ports        = ["dapr-http", "dapr-grpc"]
         command      = "./daprd"
