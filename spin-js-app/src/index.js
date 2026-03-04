@@ -45,7 +45,8 @@ router
      * 发布消息 — 通过 Dapr pubsub 向指定 topic 发布消息
      * URL 参数 :topic 为目标主题名
      */
-    .post('/publish/:topic', async (req, { topic }) => {
+    .post('/publish/:topic', async (req) => {
+        const topic = req.topic;
         const body = await req.text();
         const resp = await fetch(`${DAPR_URL}/v1.0/publish/pubsub/${topic}`, {
             method: 'POST',

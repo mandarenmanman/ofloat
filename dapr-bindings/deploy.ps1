@@ -15,37 +15,38 @@ if ($Action -eq "stop") {
     exit 0
 }
 
-# 1. Build WASM — standard WASI program (GOOS=wasip1 GOARCH=wasm)
+# 1. Build WASM — standard Go wasip1
 Info "=== Build ==="
 $go123root = & go1.23.6 env GOROOT
 $env:GOROOT = $go123root
 $env:PATH = "$go123root\bin;$env:PATH"
 Push-Location $ScriptDir
 go mod tidy
+
+$BuildDir = "$ScriptDir\build"
+if (-not (Test-Path $BuildDir)) { New-Item -ItemType Directory -Path $BuildDir | Out-Null }
+
 $env:GOOS = "wasip1"
 $env:GOARCH = "wasm"
-go build -o bindings.wasm .
-if ($LASTEXITCODE -ne 0) {
-    Pop-Location
-    Write-Host "Build failed!" -ForegroundColor Red
-    exit 1
-}
+go build -o "$BuildDir\bindings.wasm" .
+if ($LASTEXITCODE -ne 0) { Pop-Location; Write-Host "Build failed!" -ForegroundColor Red; exit 1 }
 Remove-Item Env:\GOOS
 Remove-Item Env:\GOARCH
 Pop-Location
-Info "Built bindings.wasm"
+Info "Built build/bindings.wasm"
 
 # 2. Upload WASM to dufs file server
 Info "=== Upload to dufs ==="
 $wslPath = $ScriptDir -replace '\\','/'
 $wslPath = $wslPath -replace '^([A-Za-z]):','/mnt/$1'
 $wslPath = $wslPath.ToLower().Substring(0,6) + $wslPath.Substring(6)
-wsl curl -s -T "$wslPath/bindings.wasm" $DufsAddr/bindings.wasm
-Info "Uploaded bindings.wasm to dufs"
+wsl curl -s -T "$wslPath/build/bindings.wasm" $DufsAddr/bindings.wasm
+Info "Uploaded build/bindings.wasm to dufs"
 
 # 3. Submit Nomad Job via API
 Info "=== Submit Nomad Job ==="
 $hcl = [System.IO.File]::ReadAllText("$ScriptDir\dapr-bindings.nomad.hcl")
+$hcl = $hcl -replace 'BUILD_VERSION', (Get-Date -Format "yyyyMMdd-HHmmss")
 $escaped = ($hcl | ConvertTo-Json)
 $parseBody = '{"JobHCL":' + $escaped + ',"Canonicalize":true}'
 $tmpParse = [System.IO.Path]::GetTempFileName()

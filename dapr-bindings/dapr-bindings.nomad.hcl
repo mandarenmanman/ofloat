@@ -2,6 +2,10 @@ job "dapr-bindings" {
   datacenters = ["dc1"]
   type        = "service"
 
+  meta {
+    version = "BUILD_VERSION123"
+  }
+
   group "dapr-bindings" {
     count = 1
 

@@ -1,14 +1,9 @@
 #!/bin/bash
 # spin-js-app 接口测试脚本
 # 用法: wsl bash spin-js-app/test-api.sh
-# 通过 Traefik 路由 + Dapr Service Invocation API 测试所有端点
+# 全部通过 Traefik 路由 + Dapr Service Invocation API 走应用路由
 
-# Traefik 入口 + Dapr invoke 前缀
 INVOKE="http://localhost/spin-js-app/v1.0/invoke/spin-js-app/method"
-# 状态管理直接走 Dapr state API
-STATE="http://localhost/spin-js-app/v1.0/state/statestore"
-# 发布消息走 Dapr pubsub API
-PUBSUB="http://localhost/spin-js-app/v1.0/publish/pubsub"
 
 PASS=0
 FAIL=0
@@ -17,12 +12,12 @@ green() { echo -e "\e[32m[PASS]\e[0m $1"; PASS=$((PASS+1)); }
 red()   { echo -e "\e[31m[FAIL]\e[0m $1 — $2"; FAIL=$((FAIL+1)); }
 
 echo "=== spin-js-app 接口测试 ==="
-echo "Invoke URL: $INVOKE"
 echo ""
 
 # 1. 健康检查
-echo "--- 1. GET /health ---"
-resp=$(curl -s -w "\n%{http_code}" "$INVOKE/health")
+URL="$INVOKE/health"
+echo "--- 1. GET $URL ---"
+resp=$(curl -s -w "\n%{http_code}" "$URL")
 code=$(echo "$resp" | tail -1)
 body=$(echo "$resp" | head -1)
 if [ "$code" = "200" ] && echo "$body" | grep -q '"healthy"'; then
@@ -32,8 +27,9 @@ else
 fi
 
 # 2. 首页
-echo "--- 2. GET / ---"
-resp=$(curl -s -w "\n%{http_code}" "$INVOKE/")
+URL="$INVOKE/"
+echo "--- 2. GET $URL ---"
+resp=$(curl -s -w "\n%{http_code}" "$URL")
 code=$(echo "$resp" | tail -1)
 body=$(echo "$resp" | sed '$d')
 if [ "$code" = "200" ] && echo "$body" | grep -q 'Spin JS'; then
@@ -42,9 +38,10 @@ else
   red "首页" "code=$code"
 fi
 
-# 3. 保存状态
-echo "--- 3. POST /state (via Dapr State API) ---"
-code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$STATE" \
+# 3. 保存状态（走应用 /state 路由）
+URL="$INVOKE/state"
+echo "--- 3. POST $URL ---"
+code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL" \
   -H "content-type: application/json" \
   -d '[{"key":"test-key","value":"hello-wasm"}]')
 if [ "$code" = "204" ] || [ "$code" = "200" ]; then
@@ -53,9 +50,10 @@ else
   red "保存状态" "code=$code"
 fi
 
-# 4. 读取状态
-echo "--- 4. GET /state/test-key (via Dapr State API) ---"
-resp=$(curl -s -w "\n%{http_code}" "$STATE/test-key")
+# 4. 读取状态（走应用 /state/:key 路由）
+URL="$INVOKE/state/test-key"
+echo "--- 4. GET $URL ---"
+resp=$(curl -s -w "\n%{http_code}" "$URL")
 code=$(echo "$resp" | tail -1)
 body=$(echo "$resp" | head -1)
 if [ "$code" = "200" ] && echo "$body" | grep -q 'hello-wasm'; then
@@ -64,9 +62,10 @@ else
   red "读取状态" "code=$code body=$body"
 fi
 
-# 5. 发布消息
-echo "--- 5. POST /publish/test-topic (via Dapr PubSub API) ---"
-code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$PUBSUB/test-topic" \
+# 5. 发布消息（走应用 /publish/:topic 路由）
+URL="$INVOKE/publish/test-topic"
+echo "--- 5. POST $URL ---"
+code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$URL" \
   -H "content-type: application/json" \
   -d '{"msg":"test from spin-js-app"}')
 if [ "$code" = "204" ] || [ "$code" = "200" ]; then
@@ -76,8 +75,9 @@ else
 fi
 
 # 6. 读取不存在的 key
-echo "--- 6. GET /state/nonexistent (via Dapr State API) ---"
-resp=$(curl -s -w "\n%{http_code}" "$STATE/nonexistent")
+URL="$INVOKE/state/nonexistent"
+echo "--- 6. GET $URL ---"
+resp=$(curl -s -w "\n%{http_code}" "$URL")
 code=$(echo "$resp" | tail -1)
 if [ "$code" = "204" ] || [ "$code" = "200" ]; then
   green "读取不存在的 key ($code, 空响应)"

@@ -14,7 +14,7 @@ component = "spin-js-app"
 source = "dist/spin-js-app.wasm"
 exclude_files = ["**/node_modules"]
 allowed_outbound_hosts = [
-    "http://127.0.0.1:3501",
+    "http://127.0.0.1:3500",
 ]
 [component.spin-js-app.build]
 command = ["npm install", "npm run build"]

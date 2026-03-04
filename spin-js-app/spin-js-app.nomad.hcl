@@ -2,6 +2,11 @@ job "spin-js-app" {
   datacenters = ["dc1"]
   type        = "service"
 
+
+  meta {
+    version = "BUILD_VERSION_2"
+  }
+
   group "spin-dapr" {
     count = 1
 
@@ -53,7 +58,8 @@ EOF
 
       resources {
         cpu    = 200
-        memory = 512
+        memory = 1024
+        memory_max = 4096
       }
     }
 
