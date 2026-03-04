@@ -11,6 +11,19 @@ job "dufs" {
       }
     }
 
+    service {
+      name     = "dufs"
+      port     = "http"
+      provider = "consul"
+
+      check {
+        type     = "http"
+        path     = "/"
+        interval = "10s"
+        timeout  = "2s"
+      }
+    }
+
     task "dufs" {
       driver = "docker"
 
