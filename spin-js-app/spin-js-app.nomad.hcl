@@ -8,12 +8,10 @@ job "spin-js-app" {
     network {
       mode = "bridge"
       port "dapr-http" {
-        static = 3501
-        to     = 3501
+        to = 3500
       }
       port "dapr-grpc" {
-        static = 50002
-        to     = 50002
+        to = 50001
       }
     }
 
@@ -22,14 +20,21 @@ job "spin-js-app" {
       port     = "dapr-http"
       provider = "consul"
 
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.spin-js-app.rule=PathPrefix(`/spin-js-app`)",
+        "traefik.http.routers.spin-js-app.entrypoints=web",
+        "traefik.http.middlewares.spin-js-app-strip.stripprefix.prefixes=/spin-js-app",
+        "traefik.http.routers.spin-js-app.middlewares=spin-js-app-strip",
+      ]
+
       check {
         type     = "http"
-        path     = "/v1.0/invoke/spin-js-app/method/health"
+        path     = "/v1.0/healthz"
         interval = "10s"
-        timeout  = "3s"
+        timeout  = "2s"
       }
     }
-
     task "spin-webhost" {
       driver = "raw_exec"
 
@@ -61,7 +66,7 @@ EOF
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id spin-js-app -app-port 80 -dapr-http-port 3501 -dapr-grpc-port 50002 -metrics-port 9092 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id spin-js-app -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9092 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
