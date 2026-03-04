@@ -14,7 +14,13 @@ job "redis" {
     service {
       name     = "redis"
       port     = "redis"
-      provider = "nomad"
+      provider = "consul"
+
+      check {
+        type     = "tcp"
+        interval = "10s"
+        timeout  = "2s"
+      }
     }
 
     task "redis" {

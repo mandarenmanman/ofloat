@@ -14,6 +14,20 @@ job "traefik" {
       }
     }
 
+    service {
+      name     = "traefik"
+      port     = "http"
+      provider = "consul"
+
+      check {
+        type     = "http"
+        path     = "/api/overview"
+        port     = "dashboard"
+        interval = "10s"
+        timeout  = "2s"
+      }
+    }
+
     task "traefik" {
       driver = "docker"
 

@@ -14,7 +14,14 @@ job "registry" {
     service {
       name     = "registry"
       port     = "http"
-      provider = "nomad"
+      provider = "consul"
+
+      check {
+        type     = "http"
+        path     = "/v2/"
+        interval = "10s"
+        timeout  = "2s"
+      }
     }
 
     task "registry" {

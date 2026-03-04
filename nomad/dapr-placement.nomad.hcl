@@ -9,12 +9,22 @@ job "dapr-placement" {
       port "placement" {
         static = 50000
       }
+      port "http" {
+        static = 8080
+      }
     }
 
     service {
       name     = "dapr-placement"
-      port     = "placement"
-      provider = "nomad"
+      port     = "http"
+      provider = "consul"
+
+      check {
+        type     = "tcp"
+        port     = "placement"
+        interval = "10s"
+        timeout  = "2s"
+      }
     }
 
     task "placement" {
@@ -25,7 +35,7 @@ job "dapr-placement" {
         force_pull   = false
         command      = "./placement"
         args         = ["-port", "50000"]
-        ports        = ["placement"]
+        ports        = ["placement", "http"]
         network_mode = "host"
       }
 
