@@ -7,10 +7,6 @@ bind_addr = "0.0.0.0"
 server {
   enabled          = true
   bootstrap_expect = 1
-
-  server_join {
-    retry_join = ["provider=consul tag=nomad-server"]
-  }
 }
 
 consul {

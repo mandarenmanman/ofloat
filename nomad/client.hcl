@@ -12,10 +12,6 @@ ports {
 
 client {
   enabled = true
-
-  server_join {
-    retry_join = ["provider=consul tag=nomad-server"]
-  }
 }
 
 plugin "raw_exec" {
