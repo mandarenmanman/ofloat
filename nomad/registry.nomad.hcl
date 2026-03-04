@@ -24,8 +24,20 @@ job "registry" {
       }
     }
 
+    volume "registry-data" {
+      type      = "host"
+      source    = "registry-data"
+      read_only = false
+    }
+
     task "registry" {
       driver = "docker"
+
+      volume_mount {
+        volume      = "registry-data"
+        destination = "/var/lib/registry"
+        read_only   = false
+      }
 
       config {
         image        = "registry:2"

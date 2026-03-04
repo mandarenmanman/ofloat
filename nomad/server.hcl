@@ -4,6 +4,11 @@
 data_dir  = "/opt/nomad/data"
 bind_addr = "0.0.0.0"
 
+limits {
+  http_max_conns_per_client = 0
+  rpc_max_conns_per_client  = 0
+}
+
 server {
   enabled          = true
   bootstrap_expect = 1

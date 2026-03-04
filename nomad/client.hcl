@@ -12,6 +12,11 @@ ports {
 
 client {
   enabled = true
+
+  host_volume "registry-data" {
+    path      = "/mnt/d/docker-registry"
+    read_only = false
+  }
 }
 
 plugin "raw_exec" {
@@ -22,6 +27,7 @@ plugin "raw_exec" {
 
 consul {
   address             = "127.0.0.1:8500"
+  server_service_name = "nomad-server"
   client_service_name = "nomad-client"
   tags                = ["nomad-client"]
   auto_advertise      = true
