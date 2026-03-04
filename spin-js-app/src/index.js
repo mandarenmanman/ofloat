@@ -56,6 +56,36 @@ router
         return new Response(resp.body, { status: resp.status });
     })
 
+    /**
+     * 监控 dapr-bindings — 查询 Dapr sidecar 的 metadata，确认 dapr-bindings 服务已注册
+     * 由于 dapr-bindings 是纯 WASM binding（无 app channel），无法走 service invocation，
+     * 改为查询本地 sidecar metadata 验证 Dapr mesh 中 dapr-bindings 的存在
+     */
+    .get('/check-binding', async () => {
+        try {
+            const resp = await fetch(`${DAPR_URL}/v1.0/metadata`);
+            const body = await resp.text();
+            let parsed;
+            try { parsed = JSON.parse(body); } catch { parsed = body; }
+            return new Response(JSON.stringify({
+                status: 'ok',
+                target: 'dapr-bindings',
+                daprMetadata: parsed,
+            }), {
+                headers: { 'content-type': 'application/json' },
+            });
+        } catch (e) {
+            return new Response(JSON.stringify({
+                status: 'error',
+                target: 'dapr-bindings',
+                error: e.toString(),
+            }), {
+                status: 502,
+                headers: { 'content-type': 'application/json' },
+            });
+        }
+    })
+
     /** 首页 — 返回应用信息页面 */
     .get('/', () => new Response(INDEX_HTML, {
         headers: { 'content-type': 'text/html; charset=utf-8' },

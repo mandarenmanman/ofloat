@@ -81,6 +81,8 @@ func main() {
 		handleDeleteState(req.Data)
 	case "publish":
 		handlePublish(req.Data)
+	case "check-js-app":
+		handleCheckJsApp(req.Data)
 	default:
 		if req.Action == "" {
 			writeJSON(Response{Status: "ok", Action: "echo", Result: map[string]interface{}{"input": req}})
@@ -168,6 +170,35 @@ func handlePublish(data json.RawMessage) {
 	}
 	defer resp.Body.Close()
 	writeJSON(Response{Status: "ok", Action: "publish", Result: map[string]interface{}{"topic": pub.Topic, "statusCode": resp.StatusCode}})
+}
+
+// CheckRequest 用于 check-js-app action，url 由调用方传入
+type CheckRequest struct {
+	URL string `json:"url"`
+}
+
+func handleCheckJsApp(data json.RawMessage) {
+	var req CheckRequest
+	if err := json.Unmarshal(data, &req); err != nil || req.URL == "" {
+		writeJSON(Response{Status: "error", Action: "check-js-app", Error: "missing url in data, e.g. {\"url\":\"http://host.docker.internal/spin-js-app/v1.0/invoke/spin-js-app/method/health\"}"})
+		return
+	}
+	resp, err := http.Get(req.URL)
+	if err != nil {
+		writeJSON(Response{Status: "error", Action: "check-js-app", Error: fmt.Sprintf("invoke failed: %v", err)})
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	var result interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		result = string(body)
+	}
+	writeJSON(Response{Status: "ok", Action: "check-js-app", Result: map[string]interface{}{
+		"target":         req.URL,
+		"statusCode":     resp.StatusCode,
+		"targetResponse": result,
+	}})
 }
 
 func parseKey(data json.RawMessage) string {
