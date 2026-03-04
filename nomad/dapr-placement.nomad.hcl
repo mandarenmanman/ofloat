@@ -16,7 +16,7 @@ job "dapr-placement" {
 
     service {
       name     = "dapr-placement"
-      port     = "http"
+      port     = "placement"
       provider = "consul"
 
       check {

@@ -45,11 +45,11 @@ job "dapr-bindings" {
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "./daprd -app-id dapr-bindings -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9090 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id dapr-bindings -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9090 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
-      # Discover placement and redis from Consul
+      # Discover placement, redis and dufs from Consul
       template {
         data        = <<-EOF
 {{ range service "dapr-placement" }}
