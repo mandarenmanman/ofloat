@@ -2,14 +2,11 @@ param([string]$Action = "deploy")
 
 $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SpinExe = "E:\spin-v3.6.2-windows-amd64\spin.exe"
 $GhcrUser = ""
 $GhcrToken = ""
 $envFile = Join-Path (Split-Path $ScriptDir -Parent) ".env.ps1"
 if (Test-Path $envFile) { . $envFile }
-$Registry = "ghcr.io/mandarenmanman"
 $ImageTag = "spin-python-app:latest"
-$NomadAddr = "http://localhost:4646"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
@@ -29,7 +26,6 @@ if (-not (Test-Path "venv")) {
     python -m venv venv
 }
 
-# Activate venv
 & "$ScriptDir\venv\Scripts\Activate.ps1"
 
 python -m pip install -r requirements.txt --quiet
@@ -47,11 +43,10 @@ if ($LASTEXITCODE -ne 0) {
 }
 Pop-Location
 
-# 2. login & push to ghcr.io
-Info "=== Push to ghcr.io ==="
-& $SpinExe registry login ghcr.io -u $GhcrUser -p $GhcrToken
+# 2. push to local registry
+Info "=== Push to $Registry ==="
 Push-Location $ScriptDir
-& $SpinExe registry push "$Registry/${ImageTag}"
+& $SpinExe registry push "$Registry/${ImageTag}" --insecure
 Pop-Location
 Info "Pushed to $Registry/${ImageTag}"
 
@@ -83,4 +78,4 @@ if ($result.EvalID) {
 }
 
 Write-Host ""
-Info "http://localhost:3506/v1.0/invoke/spin-python-app/method/health"
+Info "Traefik: http://localhost/spin-python-app/health"

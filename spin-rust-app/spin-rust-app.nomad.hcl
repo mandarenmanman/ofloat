@@ -8,34 +8,57 @@ job "spin-app" {
     network {
       mode = "bridge"
       port "dapr-http" {
-        static = 3500
-        to     = 3500
+        to = 3500
       }
       port "dapr-grpc" {
-        static = 50001
-        to     = 50001
+        to = 50001
       }
     }
 
-    # Spin WASM 应用 — raw_exec driver
-    # bridge 模式下加入 group 的 network namespace
-    # 80 端口只在 namespace 内可见，仅 Dapr sidecar 可访问
+    service {
+      name     = "spin-app"
+      port     = "dapr-http"
+      provider = "consul"
+
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.spin-app.rule=PathPrefix(`/spin-app`)",
+        "traefik.http.routers.spin-app.entrypoints=web",
+        "traefik.http.middlewares.spin-app-strip.stripprefix.prefixes=/spin-app",
+        "traefik.http.routers.spin-app.middlewares=spin-app-strip",
+      ]
+
+      check {
+        type     = "http"
+        path     = "/v1.0/healthz"
+        interval = "10s"
+        timeout  = "2s"
+      }
+    }
+
     task "spin-webhost" {
       driver = "raw_exec"
 
       config {
-        command = "/usr/local/bin/spin"
-        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-rust-app:latest", "--listen", "127.0.0.1:80"]
+        command = "/bin/sh"
+        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/spin-rust-app:latest --listen 127.0.0.1:80 -k"]
+      }
+
+      template {
+        data        = <<-EOF
+{{ range service "registry" }}REGISTRY_ADDR={{ .Address }}:{{ .Port }}{{ end }}
+EOF
+        destination = "local/env.txt"
+        env         = true
       }
 
       resources {
-        cpu    = 200
-        memory = 258
+        cpu        = 200
+        memory     = 256
+        memory_max = 512
       }
     }
 
-    # Dapr Sidecar — 同一个 network namespace
-    # localhost:80 直连 Spin，对外暴露 3500
     task "dapr-sidecar" {
       driver = "docker"
 
@@ -49,7 +72,6 @@ job "spin-app" {
         ]
       }
 
-      # Discover placement and redis from Consul
       template {
         data        = <<-EOF
 {{ range service "dapr-placement" }}

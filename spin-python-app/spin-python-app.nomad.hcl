@@ -8,12 +8,31 @@ job "spin-python-app" {
     network {
       mode = "bridge"
       port "dapr-http" {
-        static = 3506
-        to     = 3506
+        to = 3500
       }
       port "dapr-grpc" {
-        static = 50007
-        to     = 50007
+        to = 50001
+      }
+    }
+
+    service {
+      name     = "spin-python-app"
+      port     = "dapr-http"
+      provider = "consul"
+
+      tags = [
+        "traefik.enable=true",
+        "traefik.http.routers.spin-python-app.rule=PathPrefix(`/spin-python-app`)",
+        "traefik.http.routers.spin-python-app.entrypoints=web",
+        "traefik.http.middlewares.spin-python-app-strip.stripprefix.prefixes=/spin-python-app",
+        "traefik.http.routers.spin-python-app.middlewares=spin-python-app-strip",
+      ]
+
+      check {
+        type     = "http"
+        path     = "/v1.0/healthz"
+        interval = "10s"
+        timeout  = "2s"
       }
     }
 
@@ -21,8 +40,16 @@ job "spin-python-app" {
       driver = "raw_exec"
 
       config {
-        command = "/usr/local/bin/spin"
-        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-python-app:latest", "--listen", "127.0.0.1:80"]
+        command = "/bin/sh"
+        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/spin-python-app:latest --listen 127.0.0.1:80 -k"]
+      }
+
+      template {
+        data        = <<-EOF
+{{ range service "registry" }}REGISTRY_ADDR={{ .Address }}:{{ .Port }}{{ end }}
+EOF
+        destination = "local/env.txt"
+        env         = true
       }
 
       resources {
@@ -41,11 +68,10 @@ job "spin-python-app" {
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id spin-python-app -app-port 80 -dapr-http-port 3506 -dapr-grpc-port 50007 -metrics-port 9097 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id spin-python-app -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9097 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
-      # Discover placement and redis from Consul
       template {
         data        = <<-EOF
 {{ range service "dapr-placement" }}

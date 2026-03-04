@@ -58,4 +58,4 @@ if ($result.EvalID) {
 }
 
 Write-Host ""
-Info "http://localhost:3501/v1.0/invoke/spin-js-app/method/health"
+Info "Traefik: http://localhost/spin-js-app/health"
