@@ -7,19 +7,17 @@ bind_addr = "0.0.0.0"
 server {
   enabled          = true
   bootstrap_expect = 1
-}
 
-client {
-  enabled = true
+  server_join {
+    retry_join = ["provider=consul tag=nomad-server"]
+  }
 }
 
 consul {
-  address = "127.0.0.1:8500"
-}
-
-plugin "docker" {
-  config {
-    infra_image              = "localhost:15000/pause-amd64:3.3"
-    infra_image_pull_timeout = "5m"
-  }
+  address             = "127.0.0.1:8500"
+  server_service_name = "nomad-server"
+  tags                = ["nomad-server"]
+  auto_advertise      = true
+  server_auto_join    = true
+  client_auto_join    = true
 }

@@ -1,15 +1,36 @@
 # Nomad Client configuration
 # Deploy to: /etc/nomad.d/client.hcl
 
-data_dir  = "/opt/nomad/data"
+data_dir  = "/opt/nomad/data-client"
 bind_addr = "0.0.0.0"
+
+ports {
+  http = 5646
+  rpc  = 5647
+  serf = 5648
+}
 
 client {
   enabled = true
+
+  server_join {
+    retry_join = ["provider=consul tag=nomad-server"]
+  }
+}
+
+plugin "raw_exec" {
+  config {
+    enabled = true
+  }
 }
 
 consul {
-  address = "127.0.0.1:8500"
+  address             = "127.0.0.1:8500"
+  client_service_name = "nomad-client"
+  tags                = ["nomad-client"]
+  auto_advertise      = true
+  server_auto_join    = true
+  client_auto_join    = true
 }
 
 plugin "docker" {
