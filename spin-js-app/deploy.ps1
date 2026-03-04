@@ -23,11 +23,10 @@ Push-Location $ScriptDir
 npm run build
 Pop-Location
 
-# 2. login & push to ghcr.io
-Info "=== Push to ghcr.io ==="
-& $SpinExe registry login ghcr.io -u $GhcrUser -p $GhcrToken
+# 2. push to local registry
+Info "=== Push to $Registry ==="
 Push-Location $ScriptDir
-& $SpinExe registry push "$Registry/${ImageTag}"
+& $SpinExe registry push "$Registry/${ImageTag}" --insecure
 Pop-Location
 Info "Pushed to $Registry/${ImageTag}"
 

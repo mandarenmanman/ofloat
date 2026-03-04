@@ -17,12 +17,33 @@ job "spin-js-app" {
       }
     }
 
+    service {
+      name     = "spin-js-app"
+      port     = "dapr-http"
+      provider = "consul"
+
+      check {
+        type     = "http"
+        path     = "/v1.0/invoke/spin-js-app/method/health"
+        interval = "10s"
+        timeout  = "3s"
+      }
+    }
+
     task "spin-webhost" {
       driver = "raw_exec"
 
       config {
-        command = "/usr/local/bin/spin"
-        args    = ["up", "--from-registry", "ghcr.io/mandarenmanman/spin-js-app:latest", "--listen", "127.0.0.1:80"]
+        command = "/bin/sh"
+        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/spin-js-app:latest --listen 127.0.0.1:80 -k"]
+      }
+
+      template {
+        data        = <<-EOF
+{{ range service "registry" }}REGISTRY_ADDR={{ .Address }}:{{ .Port }}{{ end }}
+EOF
+        destination = "local/env.txt"
+        env         = true
       }
 
       resources {
