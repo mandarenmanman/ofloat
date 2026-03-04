@@ -1,14 +1,27 @@
+/**
+ * Spin JS WASM 应用 — 通过 Dapr Sidecar 实现状态管理与消息发布
+ *
+ * 架构：Spin WASM (HTTP handler) + Dapr Sidecar (基础设施抽象)
+ * 业务代码只负责 HTTP 路由，所有基础设施操作通过 Dapr HTTP API 完成
+ */
 import { AutoRouter } from 'itty-router';
 
-const DAPR_URL = 'http://127.0.0.1:3501';
+/** Dapr Sidecar HTTP 地址（bridge 网络模式下默认端口 3500） */
+const DAPR_URL = 'http://127.0.0.1:3500';
 
 let router = AutoRouter();
 
 router
+    /** 健康检查 — 供 Consul 服务健康检查和 Traefik 探活使用 */
     .get('/health', () => new Response(
         JSON.stringify({ status: 'healthy' }),
         { headers: { 'content-type': 'application/json' } }
     ))
+
+    /**
+     * 保存状态 — 将 JSON 数据写入 Dapr statestore
+     * 请求体格式: [{ "key": "xxx", "value": ... }]
+     */
     .post('/state', async (req) => {
         const body = await req.text();
         const resp = await fetch(`${DAPR_URL}/v1.0/state/statestore`, {
@@ -18,6 +31,8 @@ router
         });
         return new Response(resp.body, { status: resp.status });
     })
+
+    /** 读取状态 — 根据 key 从 Dapr statestore 获取数据 */
     .get('/state/:key', async ({ key }) => {
         const resp = await fetch(`${DAPR_URL}/v1.0/state/statestore/${key}`);
         return new Response(resp.body, {
@@ -25,6 +40,11 @@ router
             headers: { 'content-type': 'application/json' },
         });
     })
+
+    /**
+     * 发布消息 — 通过 Dapr pubsub 向指定 topic 发布消息
+     * URL 参数 :topic 为目标主题名
+     */
     .post('/publish/:topic', async (req, { topic }) => {
         const body = await req.text();
         const resp = await fetch(`${DAPR_URL}/v1.0/publish/pubsub/${topic}`, {
@@ -34,14 +54,18 @@ router
         });
         return new Response(resp.body, { status: resp.status });
     })
+
+    /** 首页 — 返回应用信息页面 */
     .get('/', () => new Response(INDEX_HTML, {
         headers: { 'content-type': 'text/html; charset=utf-8' },
     }));
 
+/** 注册 fetch 事件监听器 — Spin WASM 入口 */
 addEventListener('fetch', (event) => {
     event.respondWith(router.fetch(event.request));
 });
 
+/** 首页 HTML — 展示应用基本信息和调用示例 */
 const INDEX_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -58,10 +82,10 @@ code { background: #e9ecef; padding: 2px 5px; border-radius: 3px; }
 <h1>Spin JS (WASM) + Dapr Sidecar</h1>
 <div class="info">
 <p>Runtime: Spin WebAssembly (JavaScript)</p>
-<p>Dapr HTTP: <code>3501</code></p>
+<p>Dapr HTTP: <code>3500</code> (bridge 默认端口)</p>
 <p>App ID: <code>spin-js-app</code></p>
 <pre>
-curl http://localhost:3501/v1.0/invoke/spin-js-app/method/health
+wsl curl -s http://localhost/spin-js-app/health
 </pre>
 </div>
 </body>
