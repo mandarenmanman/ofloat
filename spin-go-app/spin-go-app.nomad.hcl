@@ -6,11 +6,14 @@ job "spin-go-app" {
     count = 1
 
     network {
+      mode = "bridge"
       port "dapr-http" {
         static = 3504
+        to     = 3504
       }
       port "dapr-grpc" {
         static = 50005
+        to     = 50005
       }
     }
 
