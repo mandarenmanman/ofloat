@@ -26,7 +26,7 @@ job "spin-go-app" {
       }
 
       resources {
-        cpu    = 200
+        cpu        = 200
         memory     = 256
         memory_max = 512
       }
@@ -36,20 +36,27 @@ job "spin-go-app" {
       driver = "docker"
 
       config {
-        image        = "localhost:15000/daprd:latest"
-        force_pull   = false
-        ports        = ["dapr-http", "dapr-grpc"]
-        command      = "./daprd"
-        args = [
-          "-app-id", "spin-go-app",
-          "-app-port", "80",
-          "-dapr-http-port", "3504",
-          "-dapr-grpc-port", "50005",
-          "-metrics-port", "9095",
-          "-placement-host-address", "172.17.0.1:50000",
-          "-resources-path", "/local/components",
-          "-config", "/local/config/config.yaml",
+        image      = "localhost:15000/daprd:latest"
+        force_pull = false
+        ports      = ["dapr-http", "dapr-grpc"]
+        entrypoint = ["/bin/sh", "-c"]
+        args       = [
+          "/usr/local/bin/daprd -app-id spin-go-app -app-port 80 -dapr-http-port 3504 -dapr-grpc-port 50005 -metrics-port 9095 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
+      }
+
+      # Discover placement and redis from Consul
+      template {
+        data        = <<-EOF
+{{ range service "dapr-placement" }}
+PLACEMENT_ADDR={{ .Address }}:{{ .Port }}
+{{ end }}
+{{ range service "redis" }}
+REDIS_HOST={{ .Address }}:{{ .Port }}
+{{ end }}
+EOF
+        destination = "local/env.txt"
+        env         = true
       }
 
       template {
@@ -63,7 +70,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "192.168.3.63:6379"
+      value: "{{ range service "redis" }}{{ .Address }}:{{ .Port }}{{ end }}"
     - name: redisPassword
       value: ""
     - name: actorStateStore
@@ -83,7 +90,7 @@ spec:
   version: v1
   metadata:
     - name: redisHost
-      value: "192.168.3.63:6379"
+      value: "{{ range service "redis" }}{{ .Address }}:{{ .Port }}{{ end }}"
     - name: redisPassword
       value: ""
 EOF

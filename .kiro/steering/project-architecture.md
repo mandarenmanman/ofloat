@@ -41,17 +41,7 @@ inclusion: always
 | 发布消息 | POST | `http://127.0.0.1:{dapr-port}/v1.0/publish/pubsub/{topic}` |
 | 服务调用 | ANY | `http://127.0.0.1:{dapr-port}/v1.0/invoke/{app-id}/method/{path}` |
 
-当前应用的 Dapr 端口：
-- spin-app (Rust): 3500
-- spin-js-app (JS): 3501
-- spin-order-service (JS): 3502
-- spin-go-app (Go): 3504
-- spin-ts-app (TS): 3505
-- spin-python-app (Python): 3506
-- spin-user-service (Go): 3507
-- spin-payment8-service (TS): 3515
-- spin-dev-service (Go): 3516
-- spin-regist-service (Go): 3517
+各应用在 bridge 网络模式下使用默认 Dapr 端口（HTTP 3500、gRPC 50001），容器间互不冲突。
 
 ## 项目结构
 
@@ -103,10 +93,8 @@ nomad/                  # 基础设施
 如果用户要创建新的 Spin 应用，按以下模式：
 1. 在项目根目录创建 `spin-{name}/` 目录
 2. 复制对应语言模板的结构（Rust 或 JS）
-3. 分配新的 Dapr 端口（在最后已用端口基础上 +1 累加）
-4. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
-5. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
-6. 最后已用端口：Dapr HTTP 端口：3517；gRPC 端口：50018；metrics 端口：9108。新增应用时在对应端口上 +1 累加，并更新此记录
+3. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
+4. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
 
 ## 部署相关
 
@@ -135,9 +123,14 @@ nomad/                  # 基础设施
 - Dapr sidecar task 建议 `memory = 256`，最低不低于 128
 
 ### Dapr Sidecar 配置要点
-- Docker 镜像必须用 `daprio/daprd`（运行时），不要用 `daprio/dapr`（基础镜像）
-- command 必须是 `./daprd`，不要用 `./placement`（那是放置服务）
+- Docker 镜像使用自定义 `localhost:15000/daprd:latest`（基于 `daprio/daprd`），daprd 二进制路径为 `/usr/local/bin/daprd`
+- 使用 `entrypoint = ["/bin/sh", "-c"]` + shell 模式启动，以支持 `${ENV_VAR}` 环境变量展开
 - daprd 参数用单横线 `-app-id`，不要用双横线 `--app-id`
 - 必须通过 template 挂载 component 文件（statestore.yaml、pubsub.yaml）和 config.yaml，否则 Dapr 无法连接 Redis
-- `-placement-host-address` 使用 `172.26.64.1:50000`
-- 每个服务的 `-metrics-port` 必须不同，避免冲突
+- `-placement-host-address` 和 Redis 地址通过 Consul 服务发现动态解析，不要硬编码 IP
+- 每个服务的 `-metrics-port` 在 bridge 网络模式下可使用默认端口，容器间互不冲突
+
+### Consul 服务发现
+- placement 地址通过 `{{ range service "dapr-placement" }}{{ .Address }}:{{ .Port }}{{ end }}` 解析，注入为 `PLACEMENT_ADDR` 环境变量
+- Redis 地址通过 `{{ range service "redis" }}{{ .Address }}:{{ .Port }}{{ end }}` 解析，直接用在 statestore.yaml 和 pubsub.yaml 模板中
+- 不要在 nomad job 中硬编码 `172.26.64.1` 等 IP 地址

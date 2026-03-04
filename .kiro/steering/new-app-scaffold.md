@@ -11,7 +11,7 @@ inclusion: manual
 向用户确认：
 - 应用名称（例如 `order-service`，最终目录为 `spin-order-service/`）
 - 语言选择：Rust / JavaScript / TypeScript / Go / Python
-- Dapr 端口、gRPC 端口、Metrics 端口：查看 `project-architecture.md` 中记录的最后已用端口，在此基础上 +1 累加分配
+- Dapr 端口使用默认值（HTTP 3500、gRPC 50001、metrics 9090），bridge 网络模式下容器间互不冲突
 
 ## 1.1 语言编码规范
 
@@ -130,11 +130,12 @@ command = "{build_command}"               # Rust: "cargo build --target wasm32-w
 - job 名称 = `"spin-{name}"`
 - `--from-registry` = `"ghcr.io/mandarenmanman/spin-{name}:latest"`
 - `-app-id` = `"spin-{name}"`
-- `-dapr-http-port` = `"{dapr_port}"`（新分配的端口）
-- `-dapr-grpc-port` = `"{grpc_port}"`（新分配的端口）
-- `-metrics-port` = `"{metrics_port}"`（新分配的端口）
-- `static` 端口映射与上面一致
+- Dapr 端口使用默认值（HTTP 3500、gRPC 50001、metrics 9090）
 - docker config 中必须有 `ports = ["dapr-http", "dapr-grpc"]`
+- daprd 使用 `entrypoint = ["/bin/sh", "-c"]` + shell 模式启动，路径为 `/usr/local/bin/daprd`
+- `-placement-host-address` 使用 `${PLACEMENT_ADDR}` 环境变量（通过 Consul 服务发现注入）
+- Redis 地址使用 Consul 模板 `{{ range service "redis" }}{{ .Address }}:{{ .Port }}{{ end }}`
+- 必须包含 Consul 服务发现的 env template（解析 dapr-placement 和 redis）
 
 ### Rust 专用文件
 
@@ -245,6 +246,7 @@ app.wasm
 - [ ] `spin.toml` 的 `allowed_outbound_hosts` 包含正确的 Dapr 地址
 - [ ] `.nomad.hcl` 中 docker config 有 `ports = ["dapr-http", "dapr-grpc"]`
 - [ ] `.nomad.hcl` 中端口号不与现有应用冲突
+- [ ] `.nomad.hcl` 中 placement 和 redis 地址通过 Consul 服务发现解析，不要硬编码 IP
 - [ ] `deploy.ps1` 从根目录加载 `.env.ps1`
 - [ ] `/health` 路由已实现
 - [ ] 告知用户需要在 WSL 中 `spin registry login ghcr.io` 后才能部署
@@ -255,4 +257,4 @@ app.wasm
 
 ## 8. 更新全局 steering
 
-创建完成后，更新 `.kiro/steering/project-architecture.md` 中的最后已用端口记录（Dapr HTTP、gRPC、metrics 各 +1）。
+创建完成后，如有需要可更新 `.kiro/steering/project-architecture.md` 中的项目结构等信息。
