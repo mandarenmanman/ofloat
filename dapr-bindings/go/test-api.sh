@@ -2,8 +2,10 @@
 # dapr-bindings 接口测试脚本
 # 用法: wsl bash dapr-bindings/go/test-api.sh
 # 通过 Traefik 路由 → Dapr Bindings API 测试 WASM binding
+# 注意：经 Traefik 调用 Dapr 时需带 dapr-app-id 头，否则会报 ERR_DIRECT_INVOKE
 
 BINDINGS="http://localhost/dapr-bindings/v1.0/bindings/wasm"
+DAPR_APP_ID="dapr-bindings"
 
 PASS=0
 FAIL=0
@@ -19,6 +21,7 @@ invoke() {
   local payload="{\"operation\":\"execute\",\"data\":\"${escaped}\"}"
   resp=$(curl -s -w "\n%{http_code}" -X POST "$BINDINGS" \
     -H "Content-Type: application/json" \
+    -H "dapr-app-id: $DAPR_APP_ID" \
     -d "$payload")
   echo "$resp"
 }
@@ -35,6 +38,7 @@ echo ""
 echo "--- 1. health (empty input) ---"
 resp=$(curl -s -w "\n%{http_code}" -X POST "$BINDINGS" \
   -H "Content-Type: application/json" \
+  -H "dapr-app-id: $DAPR_APP_ID" \
   -d '{"operation":"execute","data":""}')
 parse "$resp"
 if [ "$code" = "200" ] && echo "$body" | grep -q '"healthy"'; then
@@ -65,10 +69,10 @@ fi
 echo "--- 4. http-test ---"
 parse "$(invoke '{"action":"http-test"}')"
 if [ "$code" = "200" ] && echo "$body" | grep -q '"http-test"'; then
-  if echo "$body" | grep -q '"get_status"'; then
-    green "http-test (200, 包含 get_status)"
+  if echo "$body" | grep -q '"status"'; then
+    green "http-test (200, 包含 status)"
   else
-    red "http-test" "响应缺少 get_status: body=$body"
+    red "http-test" "响应缺少 status: body=$body"
   fi
 else
   red "http-test" "code=$code body=$body"
@@ -87,6 +91,7 @@ fi
 echo "--- 6. invalid json ---"
 resp=$(curl -s -w "\n%{http_code}" -X POST "$BINDINGS" \
   -H "Content-Type: application/json" \
+  -H "dapr-app-id: $DAPR_APP_ID" \
   -d '{"operation":"execute","data":"not-json-at-all"}')
 parse "$resp"
 if [ "$code" = "200" ] && echo "$body" | grep -q '"echo"'; then

@@ -9,7 +9,8 @@ fileMatchPattern: "dapr-bindings/**"
 
 Dapr WASM Binding 是方案二：不使用 Spin，业务代码编译为标准 `wasip1` WASM，由 Dapr 的 `bindings.wasm` component 按需加载执行。
 
-调用链路：`客户端 → Traefik → Dapr sidecar → /v1.0/bindings/wasm → WASM (stdin→stdout)`
+调用链路：`客户端 → Traefik → Dapr sidecar → /v1.0/bindings/wasm → WASM (stdin→stdout)`  
+经 Traefik 调用时**必须**带 HTTP 头 `dapr-app-id: dapr-bindings`，否则 Dapr 会返回 `ERR_DIRECT_INVOKE`。
 
 ## 依赖
 
@@ -150,9 +151,10 @@ resp, err := http.Post(daprURL+"/v1.0/publish/pubsub/my-topic", "application/jso
 ## 测试验证
 
 ```bash
-# 通过 Traefik 路由测试
+# 通过 Traefik 路由测试（必须带 dapr-app-id 头）
 wsl curl -s -X POST http://localhost/dapr-bindings/v1.0/bindings/wasm \
   -H "Content-Type: application/json" \
+  -H "dapr-app-id: dapr-bindings" \
   -d '{"operation":"execute","data":"{\"action\":\"health\"}"}'
 
 # 直接通过 Dapr 端口测试（需要知道映射端口）

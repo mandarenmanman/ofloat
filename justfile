@@ -85,4 +85,4 @@ health app-id:
 # 检查 binding 健康状态
 [no-exit-message]
 health-binding:
-    wsl curl -s -X POST http://localhost/dapr-bindings/v1.0/bindings/wasm -H "Content-Type: application/json" -d '{"operation":"execute","data":"{\"action\":\"health\"}"}'
+    wsl curl -s -X POST http://localhost/dapr-bindings/v1.0/bindings/wasm -H "Content-Type: application/json" -H "dapr-app-id: dapr-bindings" -d '{"operation":"execute","data":"{\"action\":\"health\"}"}'

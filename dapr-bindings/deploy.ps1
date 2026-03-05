@@ -135,4 +135,4 @@ if ($result.EvalID) {
 }
 
 Write-Host ""
-Info "Traefik: http://localhost/${AppName}/v1.0/bindings/wasm"
+Info "Traefik: http://localhost/${AppName}/v1.0/bindings/wasm (请求需带 header: dapr-app-id: dapr-bindings)"

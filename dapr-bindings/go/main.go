@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	wasiclient "github.com/dev-wasm/dev-wasm-go/http/client"
@@ -63,6 +64,10 @@ func main() {
 		writeJSON(Response{Status: "ok", Action: "echo", Result: req.Data})
 	case "http-test":
 		handleHTTPTest()
+	case "save-state":
+		handleSaveState(req.Data)
+	case "get-state":
+		handleGetState(req.Data)
 	default:
 		writeJSON(Response{Status: "error", Action: req.Action, Error: fmt.Sprintf("unknown action: %s", req.Action)})
 	}
@@ -70,35 +75,95 @@ func main() {
 
 func handleHTTPTest() {
 	client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
-
-	// GET
-	resp, err := client.Get("https://httpbin.org/get")
+	resp, err := client.Get("http://192.168.3.63:8500/v1/status/leader")
 	if err != nil {
 		writeJSON(Response{Status: "error", Action: "http-test", Error: fmt.Sprintf("GET failed: %v", err)})
 		return
 	}
 	defer resp.Body.Close()
-	getBody, _ := io.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
+	writeJSON(Response{Status: "ok", Action: "http-test", Result: map[string]any{
+		"status": resp.StatusCode,
+		"body":   string(body),
+	}})
+}
 
-	// POST
-	resp2, err := client.Post(
-		"https://httpbin.org/post",
-		"application/json",
-		wasiclient.BodyReaderCloser([]byte(`{"key": "value"}`)),
-	)
-	if err != nil {
-		writeJSON(Response{Status: "error", Action: "http-test", Error: fmt.Sprintf("POST failed: %v", err)})
+// handleSaveState 写入 sidecar state store。Data: {"key":"k1","value":"v1"} 或 [{"key":"k1","value":"v1"},...]
+func handleSaveState(data json.RawMessage) {
+	var items []struct {
+		Key   string `json:"key"`
+		Value any    `json:"value"`
+	}
+	if len(data) == 0 {
+		writeJSON(Response{Status: "error", Action: "save-state", Error: "missing data"})
 		return
 	}
-	defer resp2.Body.Close()
-	postBody, _ := io.ReadAll(resp2.Body)
+	// 支持单条 {"key":"x","value":"y"} 或数组
+	if data[0] == '[' {
+		if err := json.Unmarshal(data, &items); err != nil {
+			writeJSON(Response{Status: "error", Action: "save-state", Error: fmt.Sprintf("invalid array: %v", err)})
+			return
+		}
+	} else {
+		var one struct {
+			Key   string `json:"key"`
+			Value any    `json:"value"`
+		}
+		if err := json.Unmarshal(data, &one); err != nil {
+			writeJSON(Response{Status: "error", Action: "save-state", Error: fmt.Sprintf("invalid body: %v", err)})
+			return
+		}
+		items = []struct {
+			Key   string `json:"key"`
+			Value any    `json:"value"`
+		}{one}
+	}
+	body, _ := json.Marshal(items)
+	client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
+	resp, err := client.Post(daprURL+"/v1.0/state/statestore", "application/json", wasiclient.BodyReaderCloser(body))
+	if err != nil {
+		writeJSON(Response{Status: "error", Action: "save-state", Error: fmt.Sprintf("POST failed: %v", err)})
+		return
+	}
+	defer resp.Body.Close()
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		writeJSON(Response{Status: "error", Action: "save-state", Error: string(respBody), Result: map[string]any{"status": resp.StatusCode}})
+		return
+	}
+	writeJSON(Response{Status: "ok", Action: "save-state", Result: map[string]any{"keys": len(items), "status": resp.StatusCode, "body": string(respBody)}})
+}
 
-	writeJSON(Response{Status: "ok", Action: "http-test", Result: map[string]any{
-		"get_status":  resp.StatusCode,
-		"get_body":    string(getBody),
-		"post_status": resp2.StatusCode,
-		"post_body":   string(postBody),
-	}})
+// handleGetState 从 sidecar state store 读取。Data: {"key":"k1"}
+func handleGetState(data json.RawMessage) {
+	var in struct {
+		Key string `json:"key"`
+	}
+	if len(data) == 0 {
+		writeJSON(Response{Status: "error", Action: "get-state", Error: "missing data"})
+		return
+	}
+	if err := json.Unmarshal(data, &in); err != nil || in.Key == "" {
+		writeJSON(Response{Status: "error", Action: "get-state", Error: "data must be {\"key\":\"...\"}"})
+		return
+	}
+	client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
+	resp, err := client.Get(daprURL + "/v1.0/state/statestore/" + url.PathEscape(in.Key))
+	if err != nil {
+		writeJSON(Response{Status: "error", Action: "get-state", Error: fmt.Sprintf("GET failed: %v", err)})
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == 404 {
+		writeJSON(Response{Status: "ok", Action: "get-state", Result: map[string]any{"key": in.Key, "value": nil, "found": false}})
+		return
+	}
+	if resp.StatusCode >= 400 {
+		writeJSON(Response{Status: "error", Action: "get-state", Error: string(body), Result: map[string]any{"status": resp.StatusCode}})
+		return
+	}
+	writeJSON(Response{Status: "ok", Action: "get-state", Result: map[string]any{"key": in.Key, "value": string(body), "found": true}})
 }
 
 func writeJSON(resp Response) {
