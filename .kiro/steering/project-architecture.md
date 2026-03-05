@@ -123,6 +123,16 @@ dapr-bindings/          # 方案二：Dapr WASM Binding 应用
     assembly/index.ts   # 业务逻辑入口
     package.json        # assemblyscript 编译器
     .devcontainer/      # devcontainer 配置
+  cpp/                  # C++ 实现
+    main.cpp            # 业务逻辑入口
+    Makefile            # wasi-sdk 编译 (clang++)
+    .devcontainer/      # devcontainer 配置
+  ts/                   # TypeScript 实现
+    src/index.ts        # 业务逻辑入口
+    package.json        # esbuild + typescript
+    tsconfig.json       # TypeScript 配置
+    build.mjs           # esbuild 构建脚本
+    .devcontainer/      # devcontainer 配置
 
 nomad/                  # 基础设施
   redis.nomad.hcl

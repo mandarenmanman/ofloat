@@ -1,0 +1,13 @@
+{
+  "name": "dapr-bindings-ts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "esbuild": "^0.25.8",
+    "@aspect-build/aspect-cli": "^0.1.0"
+  }
+}
