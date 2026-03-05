@@ -1,0 +1,11 @@
+{
+  "name": "dapr-bindings-assemblyscript",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "asc assembly/index.ts --outFile build/bindings.wasm --optimize --exportRuntime"
+  },
+  "devDependencies": {
+    "assemblyscript": "^0.27.32"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "WASI Rust Dev",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "postCreateCommand": "rustup target add wasm32-wasip1",
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer"]
+    }
+  }
+}

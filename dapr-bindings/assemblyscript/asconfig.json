@@ -1,0 +1,11 @@
+{
+  "targets": {
+    "release": {
+      "outFile": "build/bindings.wasm",
+      "optimize": true
+    }
+  },
+  "options": {
+    "exportRuntime": true
+  }
+}
