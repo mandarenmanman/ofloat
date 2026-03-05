@@ -1,11 +1,13 @@
-job "spin-js-app" {
+# Spin App Nomad Job Template
+# 由 deploy.ps1 读取并替换以下变量后提交:
+#   <<APP_NAME>>        - 应用名称, 如 spin-go-app
+#   <<SPIN_MEMORY>>     - spin-webhost memory (MB)
+#   <<SPIN_MEMORY_MAX>> - spin-webhost memory_max (MB)
+#   <<DAPR_MEMORY>>     - dapr-sidecar memory (MB)
+
+job "<<APP_NAME>>" {
   datacenters = ["dc1"]
   type        = "service"
-
-
-  meta {
-    version = "BUILD_VERSION_2"
-  }
 
   group "spin-dapr" {
     count = 1
@@ -21,16 +23,16 @@ job "spin-js-app" {
     }
 
     service {
-      name     = "spin-js-app"
+      name     = "<<APP_NAME>>"
       port     = "dapr-http"
       provider = "consul"
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.spin-js-app.rule=PathPrefix(`/spin-js-app`)",
-        "traefik.http.routers.spin-js-app.entrypoints=web",
-        "traefik.http.middlewares.spin-js-app-strip.stripprefix.prefixes=/spin-js-app",
-        "traefik.http.routers.spin-js-app.middlewares=spin-js-app-strip",
+        "traefik.http.routers.<<APP_NAME>>.rule=PathPrefix(`/<<APP_NAME>>`)",
+        "traefik.http.routers.<<APP_NAME>>.entrypoints=web",
+        "traefik.http.middlewares.<<APP_NAME>>-strip.stripprefix.prefixes=/<<APP_NAME>>",
+        "traefik.http.routers.<<APP_NAME>>.middlewares=<<APP_NAME>>-strip",
       ]
 
       check {
@@ -40,12 +42,13 @@ job "spin-js-app" {
         timeout  = "2s"
       }
     }
+
     task "spin-webhost" {
       driver = "raw_exec"
 
       config {
         command = "/bin/sh"
-        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/spin-js-app:latest --listen 127.0.0.1:80 -k"]
+        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/<<APP_NAME>>:latest --listen 127.0.0.1:80 -k"]
       }
 
       template {
@@ -57,9 +60,9 @@ EOF
       }
 
       resources {
-        cpu    = 200
-        memory = 1024
-        memory_max = 4096
+        cpu        = 200
+        memory     = <<SPIN_MEMORY>>
+        memory_max = <<SPIN_MEMORY_MAX>>
       }
     }
 
@@ -72,11 +75,10 @@ EOF
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id spin-js-app -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9092 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id <<APP_NAME>> -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
-      # Discover placement and redis from Consul
       template {
         data        = <<-EOF
 {{ range service "dapr-placement" }}
@@ -148,7 +150,7 @@ EOF
 
       resources {
         cpu    = 200
-        memory = 512
+        memory = <<DAPR_MEMORY>>
       }
     }
   }

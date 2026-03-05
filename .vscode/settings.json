@@ -5,5 +5,9 @@
         "wsl curl *",
         "powershell *",
         "Start-Sleep -Seconds 10; wsl curl -s *"
-    ]
+    ],
+    "typescript.tsdk": null,
+    "files.associations": {
+        "dapr-bindings/assemblyscript/assembly/**/*.ts": "assemblyscript"
+    }
 }
