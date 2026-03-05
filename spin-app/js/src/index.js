@@ -9,6 +9,8 @@ import { AutoRouter } from 'itty-router';
 /** Dapr Sidecar HTTP 地址（bridge 网络模式下默认端口 3500） */
 const DAPR_URL = 'http://127.0.0.1:3500';
 
+const CONSUL_API = "http://192.168.3.63:8500/v1/internal/ui/nodes?dc=dc1"
+
 let router = AutoRouter();
 
 router
@@ -78,6 +80,30 @@ router
             return new Response(JSON.stringify({
                 status: 'error',
                 target: 'dapr-bindings',
+                error: e.toString(),
+            }), {
+                status: 502,
+                headers: { 'content-type': 'application/json' },
+            });
+        }
+    })
+
+    /** 查询 Consul 节点信息 */
+    .get('/consul/nodes', async () => {
+        try {
+            const resp = await fetch(CONSUL_API);
+            const body = await resp.text();
+            let parsed;
+            try { parsed = JSON.parse(body); } catch { parsed = body; }
+            return new Response(JSON.stringify({
+                status: 'ok',
+                nodes: parsed,
+            }), {
+                headers: { 'content-type': 'application/json' },
+            });
+        } catch (e) {
+            return new Response(JSON.stringify({
+                status: 'error',
                 error: e.toString(),
             }), {
                 status: 502,

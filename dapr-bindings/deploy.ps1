@@ -27,7 +27,7 @@ if (-not $DufsAddr) { $DufsAddr = "http://localhost:5555" }
 
 $AppName = "dapr-bindings"
 $WasmFile = "bindings.wasm"
-$DaprMemory = 256
+$DaprMemory = 512
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
@@ -47,15 +47,17 @@ Push-Location $AppDir
 
 switch ($Lang) {
     "go" {
+        # Go 1.23 环境（TinyGo 要求 Go 1.19–1.23）
         $go123root = & go1.23.6 env GOROOT
+        if (-not $go123root) { throw "未找到 go1.23.6，请先安装 Go 1.23" }
         $env:GOROOT = $go123root
         $env:PATH = "$go123root\bin;$env:PATH"
+        go version  # 确认当前是 1.23.x
         go mod tidy
-        $env:GOOS = "wasip1"
-        $env:GOARCH = "wasm"
-        go build -o "$BuildDir\$WasmFile" .
-        Remove-Item Env:\GOOS
-        Remove-Item Env:\GOARCH
+        # TinyGo 编译为 core wasm（wasi），供 Dapr wazero + wasi-http 使用
+        # 不做 wasm-tools component embed，Dapr 需要 core module
+        tinygo build -target=wasi -o "$BuildDir\$WasmFile" --no-debug -tags purego .
+        if ($LASTEXITCODE -ne 0) { throw "TinyGo build failed" }
     }
     "rust" {
         cargo build --release --target wasm32-wasip1
