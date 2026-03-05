@@ -1,12 +1,14 @@
-job "dapr-bindings" {
+# Dapr WASM Binding Nomad Job Template
+# 由 deploy.ps1 读取并替换以下变量后提交:
+#   <<APP_NAME>>    - 应用名称, 如 dapr-bindings
+#   <<WASM_FILE>>   - dufs 上的 WASM 文件名, 如 bindings.wasm
+#   <<DAPR_MEMORY>> - dapr-sidecar memory (MB)
+
+job "<<APP_NAME>>" {
   datacenters = ["dc1"]
   type        = "service"
 
-  meta {
-    version = "BUILD_VERSION123"
-  }
-
-  group "dapr-bindings" {
+  group "<<APP_NAME>>" {
     count = 1
 
     network {
@@ -20,16 +22,16 @@ job "dapr-bindings" {
     }
 
     service {
-      name     = "dapr-bindings"
+      name     = "<<APP_NAME>>"
       port     = "dapr-http"
       provider = "consul"
 
       tags = [
         "traefik.enable=true",
-        "traefik.http.routers.dapr-bindings.rule=PathPrefix(`/dapr-bindings`)",
-        "traefik.http.routers.dapr-bindings.entrypoints=web",
-        "traefik.http.middlewares.dapr-bindings-strip.stripprefix.prefixes=/dapr-bindings",
-        "traefik.http.routers.dapr-bindings.middlewares=dapr-bindings-strip",
+        "traefik.http.routers.<<APP_NAME>>.rule=PathPrefix(`/<<APP_NAME>>`)",
+        "traefik.http.routers.<<APP_NAME>>.entrypoints=web",
+        "traefik.http.middlewares.<<APP_NAME>>-strip.stripprefix.prefixes=/<<APP_NAME>>",
+        "traefik.http.routers.<<APP_NAME>>.middlewares=<<APP_NAME>>-strip",
       ]
 
       check {
@@ -49,11 +51,10 @@ job "dapr-bindings" {
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id dapr-bindings -dapr-http-port 3500 -dapr-grpc-port 50001 -metrics-port 9090 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id <<APP_NAME>> -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
-      # Discover placement, redis and dufs from Consul
       template {
         data        = <<-EOF
 {{ range service "dapr-placement" }}
@@ -70,7 +71,6 @@ EOF
         env         = true
       }
 
-      # WASM binding component (uses DUFS_ADDR from Consul)
       template {
         data        = <<-EOF
 apiVersion: dapr.io/v1alpha1
@@ -82,12 +82,11 @@ spec:
   version: v1
   metadata:
     - name: url
-      value: "http://{{ range service "dufs" }}{{ .Address }}:{{ .Port }}{{ end }}/bindings.wasm"
+      value: "http://{{ range service "dufs" }}{{ .Address }}:{{ .Port }}{{ end }}/<<WASM_FILE>>"
 EOF
         destination = "local/components/wasm-binding.yaml"
       }
 
-      # State store (Redis via Consul)
       template {
         data        = <<-EOF
 apiVersion: dapr.io/v1alpha1
@@ -108,7 +107,6 @@ EOF
         destination = "local/components/statestore.yaml"
       }
 
-      # Pub/Sub (Redis via Consul)
       template {
         data        = <<-EOF
 apiVersion: dapr.io/v1alpha1
@@ -127,7 +125,6 @@ EOF
         destination = "local/components/pubsub.yaml"
       }
 
-      # Dapr config
       template {
         data        = <<-EOF
 apiVersion: dapr.io/v1alpha1
@@ -147,8 +144,8 @@ EOF
       }
 
       resources {
-        cpu        = 201
-        memory     = 256
+        cpu        = 200
+        memory     = <<DAPR_MEMORY>>
         memory_max = 512
       }
     }
