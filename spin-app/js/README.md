@@ -10,10 +10,23 @@ Build the App
 spin build
 ```
 
-## Run the App 
+## Run the App (local)
+
+先构建再运行（WASM 已存在可只运行）：
 
 ```bash
+# 若未构建：npm run build
 spin up
+# 或
+npm start
+```
+
+默认监听 **3000**，示例：
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3000/consul/nodes
+curl http://localhost:3000/external/sample
 ```
 
 ## Using Spin Interfaces

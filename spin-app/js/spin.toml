@@ -13,9 +13,11 @@ component = "spin-js-app"
 [component.spin-js-app]
 source = "dist/spin-js-app.wasm"
 exclude_files = ["**/node_modules"]
+# Spin 3.6：格式为 scheme://name:port，不能使用 * 作 port
 allowed_outbound_hosts = [
     "http://127.0.0.1:3500",
     "http://192.168.3.63:8500",
+    "http://api.24box.cn:9002",
 ]
 [component.spin-js-app.build]
 command = ["npm install", "npm run build"]

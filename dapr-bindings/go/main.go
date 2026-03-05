@@ -75,7 +75,7 @@ func main() {
 
 func handleHTTPTest() {
 	client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
-	resp, err := client.Get("http://192.168.3.63:8500/v1/status/leader")
+	resp, err := client.Get("http://api.24box.cn:9002/kuaidihelp/smscallback")
 	if err != nil {
 		writeJSON(Response{Status: "error", Action: "http-test", Error: fmt.Sprintf("GET failed: %v", err)})
 		return

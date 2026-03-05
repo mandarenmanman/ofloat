@@ -40,9 +40,9 @@ $headers = @{
     "Content-Type" = "application/json"
     "dapr-app-id" = "dapr-bindings"
 }
-
-Write-Host "`n=== 2. 健康检查 (health) ===" -ForegroundColor Cyan
-$body = '{"operation":"execute","data":"{\"action\":\"health\"}"}'
+Write-Host "`n=== 3. 存入 state (save-state) ===" -ForegroundColor Cyan
+$inner = '{"action":"http-test","data":{"key":"test-key","value":"hello-from-ps"}}'
+$body = @{ operation = "execute"; data = $inner } | ConvertTo-Json -Compress
 try {
     $r = Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -Body $body -TimeoutSec 5
     Write-Host "  响应: $($r | ConvertTo-Json -Compress)" -ForegroundColor Green

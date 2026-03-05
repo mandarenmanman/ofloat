@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node build.mjs && mkdirp dist && j2w -i build/bundle.js --initLocation http://spin-js-app.localhost -o dist/spin-js-app.wasm",
     "build:debug": "node build.mjs && mkdirp dist && j2w -d -i build/bundle.js --initLocation http://spin-js-app.localhost -o dist/spin-js-app.wasm",
+    "start": "spin up",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
