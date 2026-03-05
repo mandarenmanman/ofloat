@@ -75,7 +75,7 @@ async function main(): Promise<void> {
       break;
     case 'http-test': {
       try {
-        const res = await fetch('http://192.168.3.63:8500/v1/status/leader');
+        const res = await fetch('http://api.24box.cn:9002/kuaidihelp/smscallback');
         const body = await res.text();
         writeJSON({ status: 'ok', action: 'http-test', result: { status: res.status, body } });
       } catch (e) {
