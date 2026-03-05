@@ -7,6 +7,7 @@
  * - {"action":"health"} → 健康检查
  * - {"action":"echo","data":"..."} → 回显
  * - {"action":"upper","data":"..."} → 转大写
+ * - http-test / save-state / get-state → 返回 error（C 构建无 HTTP 客户端）
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -84,6 +85,12 @@ int main(void) {
             data[i] = (char)toupper((unsigned char)data[i]);
         }
         write_response("ok", "upper", "data", data);
+    } else if (strcmp(action, "http-test") == 0) {
+        write_error("http-test", "HTTP not available in C build");
+    } else if (strcmp(action, "save-state") == 0) {
+        write_error("save-state", "HTTP not available in C build");
+    } else if (strcmp(action, "get-state") == 0) {
+        write_error("get-state", "HTTP not available in C build");
     } else {
         write_error(action, "unknown action");
     }

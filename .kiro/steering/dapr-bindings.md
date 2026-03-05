@@ -14,13 +14,36 @@ Dapr WASM Binding 是方案二：不使用 Spin，业务代码编译为标准 `w
 
 ## 依赖
 
-只使用 Go 标准库，不引入任何第三方依赖（包括 Spin SDK）：
+Go 实现中，**出站 HTTP** 依赖 wasi-http，需引入：
 
 ```go
-module dapr-bindings
-
-go 1.22.0
+require github.com/dev-wasm/dev-wasm-go/http v0.0.0-20230803142009-0dee5e3d3722
 ```
+
+用 `http.Client{Transport: wasiclient.WasiRoundTripper{}}` 发请求；其余逻辑用标准库即可。
+
+## HTTP 实现方式（多语言）
+
+需要发 HTTP 的 action（`http-test`、`save-state`、`get-state`）依赖 **wasi-http**：WASM 里不直接跑 TCP，而是通过 host 提供的 wasi-http 接口发请求；Dapr 的 wazero 运行时实现了这套 host，所以能真正访问 sidecar 和 Consul。
+
+| 语言 | 当前实现 | 说明 |
+|------|----------|------|
+| **Go** | 已实现 | 使用 `github.com/dev-wasm/dev-wasm-go/http` 的 `WasiRoundTripper`，把 `net/http` 请求转成 wasi-http host 调用。 |
+| **TypeScript** | 已实现 | 使用全局 `fetch`；前提是构建/运行时注入了 `fetch`（如部分 WASI JS 运行时）。若运行环境没有 fetch，会报错。 |
+| **Rust** | 返回“未实现” | 需使用与 Dapr/wazero 兼容的 wasi-http 绑定。可尝试：<br>• 查找实现 wasi-experimental-http 或同 ABI 的 Rust crate；<br>• 或用 [WIT](https://github.com/WebAssembly/wasi-http) 生成 Rust 绑定后，在 wasip1 下调用同一套 host 函数。 |
+| **C / C++ / AssemblyScript** | 返回“未实现” | 无现成 wasi-http 库时，需按 wasi-http 的 WIT 自行声明 host 导入并实现调用，或保持仅返回错误。 |
+
+**Go 侧关键代码**（仅作参考）：
+
+```go
+import wasiclient "github.com/dev-wasm/dev-wasm-go/http/client"
+
+client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
+resp, err := client.Get("http://127.0.0.1:3500/v1.0/state/statestore/" + key)
+// 或 client.Post(..., "application/json", wasiclient.BodyReaderCloser(body))
+```
+
+其他语言要“真正实现”同一功能，需要在该语言的 wasip1 构建里接入**同一套 wasi-http host ABI**（Dapr 的 wazero 已实现），再按 Go 的 URL 与 JSON 约定发请求即可。
 
 ## 工具链要求
 

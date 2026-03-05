@@ -77,6 +77,24 @@ fn main() {
             result: Some(serde_json::json!({"data": req.data})),
             error: None,
         }),
+        "http-test" => write_response(&Response {
+            status: "error".into(),
+            action: "http-test".into(),
+            result: None,
+            error: Some("HTTP client not available in Rust WASM build".into()),
+        }),
+        "save-state" => write_response(&Response {
+            status: "error".into(),
+            action: "save-state".into(),
+            result: None,
+            error: Some("HTTP client not available in Rust WASM build".into()),
+        }),
+        "get-state" => write_response(&Response {
+            status: "error".into(),
+            action: "get-state".into(),
+            result: None,
+            error: Some("HTTP client not available in Rust WASM build".into()),
+        }),
         "upper" => {
             let s = req.data
                 .as_ref()

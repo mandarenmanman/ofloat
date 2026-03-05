@@ -7,6 +7,7 @@
  * - {"action":"health"} → 健康检查
  * - {"action":"echo","data":"..."} → 回显
  * - {"action":"upper","data":"..."} → 转大写
+ * - http-test / save-state / get-state → 返回 error（C++ 构建无 HTTP 客户端）
  */
 #include <iostream>
 #include <string>
@@ -82,6 +83,12 @@ int main() {
         std::transform(data.begin(), data.end(), data.begin(),
                        [](unsigned char c) { return std::toupper(c); });
         write_response("ok", "upper", "data", data);
+    } else if (action == "http-test") {
+        write_error("http-test", "HTTP not available in C++ build");
+    } else if (action == "save-state") {
+        write_error("save-state", "HTTP not available in C++ build");
+    } else if (action == "get-state") {
+        write_error("get-state", "HTTP not available in C++ build");
     } else {
         write_error(action, "unknown action");
     }

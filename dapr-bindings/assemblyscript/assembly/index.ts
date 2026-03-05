@@ -86,6 +86,12 @@ export function _start(): void {
       return;
     }
     writeResponse("ok", "upper", "data", data.toUpperCase());
+  } else if (action == "http-test") {
+    writeError("http-test", "HTTP not available in AssemblyScript build");
+  } else if (action == "save-state") {
+    writeError("save-state", "HTTP not available in AssemblyScript build");
+  } else if (action == "get-state") {
+    writeError("get-state", "HTTP not available in AssemblyScript build");
   } else if (action.length == 0) {
     writeStdout('{"status":"ok","action":"echo","result":{"raw":"' + input + '"}}');
   } else {
