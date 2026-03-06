@@ -75,9 +75,15 @@ func main() {
 
 func handleHTTPTest() {
 	client := &http.Client{Transport: wasiclient.WasiRoundTripper{}}
-	resp, err := client.Get("http://api.24box.cn:9002/kuaidihelp/smscallback")
+
+	// 通过 Dapr HTTP binding 调用外部 API
+	// binding name "external-http" 对应 dapr component 中配置的 base URL
+	bindingURL := daprURL + "/v1.0/bindings/external-http"
+	payload := `{"operation":"get","metadata":{"path":"/kuaidihelp/smscallback"}}`
+
+	resp, err := client.Post(bindingURL, "application/json", wasiclient.BodyReaderCloser([]byte(payload)))
 	if err != nil {
-		writeJSON(Response{Status: "error", Action: "http-test", Error: fmt.Sprintf("GET failed: %v", err)})
+		writeJSON(Response{Status: "error", Action: "http-test", Error: fmt.Sprintf("binding invoke failed: %v", err)})
 		return
 	}
 	defer resp.Body.Close()

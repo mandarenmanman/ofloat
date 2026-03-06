@@ -128,6 +128,24 @@ EOF
       template {
         data        = <<-EOF
 apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: external-http
+spec:
+  type: bindings.http
+  version: v1
+  metadata:
+    - name: url
+      value: "http://api.24box.cn:9002"
+    - name: direction
+      value: "output"
+EOF
+        destination = "local/components/external-http.yaml"
+      }
+
+      template {
+        data        = <<-EOF
+apiVersion: dapr.io/v1alpha1
 kind: Configuration
 metadata:
   name: daprConfig
