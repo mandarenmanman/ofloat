@@ -26,8 +26,9 @@ if (-not $NomadAddr) { $NomadAddr = "http://localhost:4646" }
 if (-not $DufsAddr) { $DufsAddr = "http://localhost:5555" }
 
 $AppName = "dapr-bindings"
-$WasmFile = "bindings.wasm"
 $DaprMemory = 512
+$ConfigVersion = Get-Date -Format "yyyyMMddHHmmss"
+$WasmFile = "bindings-$Lang-$ConfigVersion.wasm"
 
 function Info($msg) { Write-Host "[INFO] $msg" -ForegroundColor Green }
 
@@ -61,7 +62,7 @@ switch ($Lang) {
     }
     "rust" {
         cargo build --release --target wasm32-wasip1
-        Copy-Item "target\wasm32-wasip1\release\*.wasm" "$BuildDir\$WasmFile"
+        Copy-Item "target\wasm32-wasip1\release\*.wasm" "$BuildDir\$WasmFile" -Force
     }
     default {
         Pop-Location
@@ -93,6 +94,7 @@ $hcl = [System.IO.File]::ReadAllText($tplFile)
 $hcl = $hcl.Replace("<<APP_NAME>>", $AppName)
 $hcl = $hcl.Replace("<<WASM_FILE>>", $WasmFile)
 $hcl = $hcl.Replace("<<DAPR_MEMORY>>", "$DaprMemory")
+$hcl = $hcl.Replace("<<CONFIG_VERSION>>", $ConfigVersion)
 
 # --- Submit Nomad Job ---
 Info "=== Submit Nomad Job ==="

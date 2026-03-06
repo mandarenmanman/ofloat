@@ -1,17 +1,17 @@
 # Dapr WASM Binding Nomad Job Template
 # 由 deploy.ps1 读取并替换以下变量后提交:
 #   <<APP_NAME>>    - 应用名称, 如 dapr-bindings
-#   <<WASM_FILE>>   - dufs 上的 WASM 文件名, 如 bindings.wasm
-#   <<DAPR_MEMORY>> - dapr-sidecar memory (MB)
+#   <<WASM_FILE>>      - dufs 上的 WASM 文件名, 如 bindings-rust-20260307112233.wasm
+#   <<DAPR_MEMORY>>    - dapr-sidecar memory (MB)
+#   <<CONFIG_VERSION>> - 部署版本号，用于强制 Nomad 生成新 alloc
 
 job "<<APP_NAME>>" {
   datacenters = ["dc1"]
   type        = "service"
    
 
-  //配置文件版本号
   meta {
-    config_version = "20260306"
+    config_version = "<<CONFIG_VERSION>>"
   }
 
   group "<<APP_NAME>>" {
@@ -57,7 +57,7 @@ job "<<APP_NAME>>" {
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id <<APP_NAME>> -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id <<APP_NAME>> -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address $${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
