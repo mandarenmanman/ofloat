@@ -1,0 +1,5 @@
+**/.env.ps1
+.env.sh
+_tmp_p.json
+*.tmp
+*/daprd
