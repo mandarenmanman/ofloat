@@ -1,10 +1,11 @@
 # Consul agent configuration (dev single-node)
 # Deploy to: /etc/consul.d/consul.hcl
-# Variables substituted by install.sh from .env.sh
 
 data_dir       = "/opt/consul/data"
-bind_addr      = "${CONSUL_BIND}"
-advertise_addr = "${CONSUL_BIND}"
+bind_addr      = "172.31.68.177"
+advertise_addr = "172.31.68.177"
+
+advertise_addr_wan = "8.218.170.45"
 
 server           = true
 bootstrap_expect = 1
@@ -23,6 +24,14 @@ ports {
 
 connect {
   enabled = true
+}
+
+acl {
+  enabled        = true
+  default_policy = "allow"
+  tokens {
+    initial_management = "root"
+  }
 }
 
 log_level = "INFO"
