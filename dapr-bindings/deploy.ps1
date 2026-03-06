@@ -1,10 +1,10 @@
 # 用法: .\deploy.ps1 <语言> [stop]
-# 语言: go | rust | c | cpp | ts | assemblyscript
+# 语言: go | rust
 # 示例: .\deploy.ps1 go        # 部署
 #       .\deploy.ps1 rust stop # 停止
 param(
     [Parameter(Position=0, Mandatory=$true)]
-    [ValidateSet("go", "rust", "c", "cpp", "ts", "assemblyscript")]
+    [ValidateSet("go", "rust")]
     [string]$Lang,
     [Parameter(Position=1)]
     [ValidateSet("deploy", "stop")]
@@ -62,20 +62,6 @@ switch ($Lang) {
     "rust" {
         cargo build --release --target wasm32-wasip1
         Copy-Item "target\wasm32-wasip1\release\*.wasm" "$BuildDir\$WasmFile"
-    }
-    "c" {
-        make clean; make
-    }
-    "cpp" {
-        make clean; make
-    }
-    "ts" {
-        npm install
-        npm run build
-    }
-    "assemblyscript" {
-        npm install
-        npm run build
     }
     default {
         Pop-Location
