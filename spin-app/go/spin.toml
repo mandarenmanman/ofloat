@@ -13,7 +13,7 @@ component = "spin-go-app"
 [component.spin-go-app]
 source = "main.wasm"
 allowed_outbound_hosts = [
-    "http://127.0.0.1:3504",
+    "http://127.0.0.1:3500",
 ]
 [component.spin-go-app.build]
 command = "tinygo build -target=wasip1 -buildmode=c-shared -no-debug -o main.wasm ."

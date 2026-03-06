@@ -13,7 +13,7 @@ component = "spin-python-app"
 [component.spin-python-app]
 source = "app.wasm"
 allowed_outbound_hosts = [
-    "http://127.0.0.1:3506",
+    "http://127.0.0.1:3500",
 ]
 [component.spin-python-app.build]
 command = "componentize-py -w spin-http componentize app -o app.wasm"
