@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ofloat — 一句话，做一个网站</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    [v-cloak] { display: none; }
+    .gradient-text {
+      background: linear-gradient(135deg, #654ff0, #00d4aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-bg {
+      background: radial-gradient(ellipse at 30% 0%, rgba(101,79,240,0.15) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 0%, rgba(0,212,170,0.1) 0%, transparent 60%);
+    }
+    .fade-in { animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    .typing { border-right: 2px solid #6366f1; padding-right: 4px; }
+    .prompt-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .prompt-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(99,102,241,0.15); }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans antialiased">
+<div id="app" v-cloak>
+
+  <!-- Navbar -->
+  <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur border-b border-gray-800">
+    <div class="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="about.html" class="text-xl font-bold gradient-text">🧠 ofloat</a>
+      <div class="flex items-center gap-5 text-sm text-gray-400">
+        <a href="index.html" class="hover:text-white transition">开发者</a>
+        <a href="https://github.com/mandarenmanman/ofloat" target="_blank" class="text-gray-300 hover:text-white transition">
+          <i class="fa-brands fa-github text-lg"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero-bg pt-32 pb-28 px-6">
+    <div class="max-w-3xl mx-auto text-center fade-in">
+      <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-8">
+        说一句话<br/>
+        <span class="gradient-text">做一个网站</span>
+      </h1>
+      <p class="text-xl text-gray-300 max-w-2xl mx-auto mb-6 leading-relaxed">
+        不需要会写代码，不需要懂技术。<br/>
+        你只需要告诉 AI 你想要什么，ofloat 帮你把它变成所有人都能访问的真实产品。
+      </p>
+      <p class="text-lg text-gray-500 mb-12">开源 · 免费 · 任何人都能用</p>
+      <a href="https://github.com/mandarenmanman/ofloat" target="_blank"
+         class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium transition inline-flex items-center gap-2 text-lg">
+        <i class="fa-brands fa-github"></i> 开始使用
+      </a>
+    </div>
+  </section>
+
+  <!-- 一句话能做什么 -->
+  <section class="py-24 px-6">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">一句话能做什么？</h2>
+      <p class="text-gray-400 text-center text-lg mb-14">你说一句话，ofloat 帮你做出来，所有人都能访问。</p>
+
+      <div class="grid md:grid-cols-2 gap-5">
+        <div v-for="item in prompts" :key="item.prompt" class="prompt-card bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="item.iconBg">
+              <i :class="item.icon"></i>
+            </div>
+            <p class="text-sm text-gray-500">{{ item.label }}</p>
+          </div>
+          <p class="text-lg text-indigo-300 leading-relaxed">
+            <span class="text-gray-500 mr-1">"</span>{{ item.prompt }}<span class="text-gray-500 ml-1">"</span>
+          </p>
+          <p class="text-sm text-gray-500 mt-3">→ {{ item.result }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 怎么做到的 -->
+  <section class="py-24 px-6 bg-gray-900/50">
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-6">就这么简单</h2>
+      <p class="text-gray-400 text-lg mb-14 leading-relaxed">三步，从想法到所有人都能用的产品。</p>
+
+      <div class="grid md:grid-cols-3 gap-6 text-left">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
+          <div class="w-14 h-14 rounded-full bg-indigo-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+          <h3 class="font-semibold text-lg mb-2">你说一句话</h3>
+          <p class="text-gray-400">告诉 AI 你想做什么，用你自己的话就行。</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
+          <div class="w-14 h-14 rounded-full bg-indigo-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+          <h3 class="font-semibold text-lg mb-2">AI 帮你写好</h3>
+          <p class="text-gray-400">AI 自动生成程序，ofloat 确保它能稳定运行。</p>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 text-center">
+          <div class="w-14 h-14 rounded-full bg-indigo-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+          <h3 class="font-semibold text-lg mb-2">所有人都能用</h3>
+          <p class="text-gray-400">自动上线，分享链接，任何人打开就能用。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 不需要什么 -->
+  <section class="py-24 px-6">
+    <div class="max-w-3xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-12">你不需要…</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div v-for="item in noNeeds" :key="item" class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <i class="fa-solid fa-xmark text-red-400 text-lg mb-2"></i>
+          <p class="text-sm text-gray-400">{{ item }}</p>
+        </div>
+      </div>
+      <p class="text-xl font-semibold mt-10 gradient-text">你只需要一句话。</p>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-24 px-6 bg-gray-900/50">
+    <div class="max-w-2xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-4">免费开源，现在就试</h2>
+      <p class="text-gray-400 text-lg mb-8">ofloat 完全免费，任何人都可以使用。</p>
+      <a href="https://github.com/mandarenmanman/ofloat" target="_blank"
+         class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium transition inline-flex items-center gap-2 text-lg">
+        <i class="fa-brands fa-github"></i> 开始使用
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-10 px-6 border-t border-gray-800">
+    <div class="max-w-4xl mx-auto text-center">
+      <p class="gradient-text font-semibold mb-3">说一句话，做一个网站</p>
+      <p class="text-xs text-gray-600">Apache-2.0 License · ofloat</p>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+Vue.createApp({
+  data() {
+    return {
+      prompts: [
+        {
+          icon: 'fa-solid fa-globe text-blue-400',
+          iconBg: 'bg-blue-500/15',
+          label: '公司官网',
+          prompt: '帮我做一个咖啡店的官网，要有菜单和联系方式',
+          result: '一个完整的咖啡店网站，所有人都能访问'
+        },
+        {
+          icon: 'fa-solid fa-comments text-emerald-400',
+          iconBg: 'bg-emerald-500/15',
+          label: '问答社区',
+          prompt: '做一个内部问答网站，员工可以提问和回答',
+          result: '一个可以注册、提问、回答的问答平台'
+        },
+        {
+          icon: 'fa-solid fa-clipboard-list text-orange-400',
+          iconBg: 'bg-orange-500/15',
+          label: '预约系统',
+          prompt: '做一个美发店的在线预约系统',
+          result: '客户可以选时间、选服务、在线预约'
+        },
+        {
+          icon: 'fa-solid fa-chart-line text-purple-400',
+          iconBg: 'bg-purple-500/15',
+          label: '数据看板',
+          prompt: '做一个销售数据看板，能看到每天的营收',
+          result: '实时展示销售数据的可视化仪表盘'
+        },
+        {
+          icon: 'fa-solid fa-cart-shopping text-pink-400',
+          iconBg: 'bg-pink-500/15',
+          label: '在线商城',
+          prompt: '做一个卖手工饰品的小商城',
+          result: '带商品展示、购物车的在线商店'
+        },
+        {
+          icon: 'fa-solid fa-file-lines text-cyan-400',
+          iconBg: 'bg-cyan-500/15',
+          label: '表单收集',
+          prompt: '做一个活动报名表，收集姓名和手机号',
+          result: '一个在线报名页面，数据自动保存'
+        }
+      ],
+      noNeeds: [
+        '会写代码',
+        '懂服务器',
+        '买域名',
+        '学设计',
+        '找程序员',
+        '看教程',
+        '装软件',
+        '花很多钱'
+      ]
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

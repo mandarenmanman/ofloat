@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ofloat — 你只需要一句话。剩下的交给ofloat</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',200:'#c7d2fe',300:'#a5b4fc',400:'#818cf8',500:'#6366f1',600:'#4f46e5',700:'#4338ca',800:'#3730a3',900:'#312e81' },
+            wasm: '#654ff0',
+            dapr: '#0d6efd',
+            spin: '#00d4aa',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [v-cloak] { display: none; }
+    .gradient-text {
+      background: linear-gradient(135deg, #654ff0, #00d4aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-bg {
+      background: radial-gradient(ellipse at 30% 0%, rgba(101,79,240,0.15) 0%, transparent 60%),
+                  radial-gradient(ellipse at 70% 0%, rgba(0,212,170,0.1) 0%, transparent 60%);
+    }
+    .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+    .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
+    .fade-in { animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    pre code { font-size: 0.85rem; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 font-sans antialiased">
+<div id="app" v-cloak>
+
+  <!-- Navbar -->
+  <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur border-b border-gray-800">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <a href="#" class="text-xl font-bold gradient-text">🧠 ofloat</a>
+      <div class="hidden md:flex items-center gap-6 text-sm text-gray-400">
+        <a href="#idea" class="hover:text-white transition">核心思路</a>
+        <a href="#arch" class="hover:text-white transition">架构模式</a>
+        <a href="#languages" class="hover:text-white transition">多语言</a>
+        <a href="#dapr-api" class="hover:text-white transition">Dapr API</a>
+        <a href="#deploy" class="hover:text-white transition">部署</a>
+        <a href="#swap" class="hover:text-white transition">换基建</a>
+        <a href="https://github.com/mandarenmanman/ofloat" target="_blank" class="text-gray-300 hover:text-white transition">
+          <i class="fa-brands fa-github text-lg"></i>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero-bg pt-32 pb-24 px-6">
+    <div class="max-w-5xl mx-auto text-center fade-in">
+      <div class="flex justify-center gap-3 mb-6 flex-wrap">
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">WebAssembly</span>
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">Dapr v1.16.9</span>
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Spin v3.6.2</span>
+        <span class="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-300 border border-orange-500/30">Nomad</span>
+      </div>
+      <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">
+        Vibe Coding 的终极<br/>
+        <span class="gradient-text">你只需要一句话。剩下的交给ofloat</span>
+      </h1>
+      <p class="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
+        Vibe Coding 让 AI 写代码变得简单，但生成的代码隐式依赖大量中间件、运行时和操作系统原语，导致 LLM 所需的上下文窗口急剧膨胀，代码有效性急剧下降。
+        ofloat 将基础设施语义收敛为单一 HTTP 协议面，AI 只需生成纯业务逻辑，从 Prompt 到生产部署，上下文最小化，代码有效性最大化。
+      </p>
+
+      <!-- Problem → Solution -->
+      <div class="grid md:grid-cols-2 gap-6 text-left max-w-4xl mx-auto mb-12">
+        <div class="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+            <h3 class="font-semibold text-red-300">Vibe Coding 的问题</h3>
+          </div>
+          <ul class="space-y-3 text-sm text-gray-400">
+            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-0.5"></i><span>AI 生成的代码直接 import Redis SDK、Kafka client，业务和基础设施耦合</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-0.5"></i><span>换个数据库或消息队列，AI 要重写大量代码</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-0.5"></i><span>本地能跑，部署到生产环境困难重重</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-xmark text-red-400 mt-0.5"></i><span>AI 不懂运维，生成的代码缺乏安全沙箱和资源隔离</span></li>
+          </ul>
+        </div>
+        <div class="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <i class="fa-solid fa-check-circle text-emerald-400"></i>
+            <h3 class="font-semibold text-emerald-300">ofloat 的解法</h3>
+          </div>
+          <ul class="space-y-3 text-sm text-gray-400">
+            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>业务代码零 SDK 依赖，所有基础设施操作 = 向 localhost:3500 发 HTTP 请求</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>换 Redis → DynamoDB → Kafka？改一行 YAML，代码不动</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>deploy.ps1 一键部署，编译 → 推送 → 上线全自动</span></li>
+            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>WASM 沙箱隔离，微秒级冷启动，几百 KB 内存</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- How it works - 3 steps -->
+      <div class="max-w-4xl mx-auto mb-12">
+        <h2 class="text-xl font-semibold mb-6 text-gray-300">三步上线</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center card-hover">
+            <div class="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center mx-auto mb-3 text-sm font-bold">1</div>
+            <h4 class="font-semibold text-sm mb-2">AI 写业务逻辑</h4>
+            <p class="text-xs text-gray-500">告诉 AI "向 localhost:3500 发 HTTP 请求操作状态/消息"，生成的代码直接可用，支持 Rust / Go / JS / TS / Python</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center card-hover">
+            <div class="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center mx-auto mb-3 text-sm font-bold">2</div>
+            <h4 class="font-semibold text-sm mb-2">一键部署</h4>
+            <p class="text-xs text-gray-500">运行 <code class="text-emerald-400">deploy.ps1 go</code>，自动编译 WASM → 推送 OCI → 提交 Nomad Job，Spin + Dapr sidecar 自动拉起</p>
+          </div>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center card-hover">
+            <div class="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center mx-auto mb-3 text-sm font-bold">3</div>
+            <h4 class="font-semibold text-sm mb-2">随时换基建</h4>
+            <p class="text-xs text-gray-500">想从 Redis 换到 DynamoDB？改 Dapr component YAML 重新部署，业务代码一行不动</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4 flex-wrap">
+        <a href="https://github.com/mandarenmanman/ofloat" target="_blank"
+           class="px-6 py-3 bg-brand-600 hover:bg-brand-700 rounded-lg font-medium transition inline-flex items-center gap-2">
+          <i class="fa-brands fa-github"></i> GitHub
+        </a>
+        <a href="#idea"
+           class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-medium transition inline-flex items-center gap-2 border border-gray-700">
+          <i class="fa-solid fa-arrow-down"></i> 深入了解
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Idea -->
+  <section id="idea" class="py-20 px-6">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">核心思路</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">
+        让 AI（或开发者）只写纯粹的 HTTP handler / CLI 逻辑，不引入任何 Redis SDK、Kafka client、云厂商依赖。
+      </p>
+      <div class="grid md:grid-cols-3 gap-6">
+        <div v-for="item in coreFeatures" :key="item.title"
+             class="bg-gray-900 border border-gray-800 rounded-xl p-6 card-hover">
+          <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-4" :class="item.iconBg">
+            <i :class="item.icon" class="text-xl"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-2">{{ item.title }}</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">{{ item.desc }}</p>
+        </div>
+      </div>
+
+      <!-- Architecture Diagram -->
+      <div class="mt-12 bg-gray-900 border border-gray-800 rounded-xl p-6 overflow-x-auto flex justify-center">
+        <pre class="text-sm text-gray-300 leading-relaxed"><code>┌─────────────────────────────────────────────────────────┐
+│                    你（或 AI）只需要写这一层              │
+│                                                         │
+│   fn handle_request(req) -&gt; Response {                  │
+│       // 纯粹的 HTTP 数据处理                            │
+│       // 向 localhost:3500 发 HTTP 请求 = 操作任何基础设施 │
+│   }                                                     │
+├─────────────────────────────────────────────────────────┤
+│  Spin (WASM 沙箱)    │  Dapr (基础设施抽象)              │
+│  微秒级冷启动          │  Redis/Kafka/DynamoDB 全透明     │
+│  几百 KB 内存          │  换后端只改 YAML，代码零修改       │
+├─────────────────────────────────────────────────────────┤
+│  Nomad (编排) + Consul (服务发现) + Traefik (反向代理)   │
+└─────────────────────────────────────────────────────────┘</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Two Architecture Modes -->
+  <section id="arch" class="py-20 px-6 bg-gray-900/50">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">两种架构模式</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">业务代码与基础设施完全解耦，按场景选择最合适的模式。</p>
+
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- Plan 1 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-8 card-hover">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-server text-emerald-400"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold">方案一：Spin WASM HTTP 应用</h3>
+              <span class="text-xs text-emerald-400 font-medium">主流模式</span>
+            </div>
+          </div>
+          <p class="text-gray-400 text-sm mb-4">业务代码是 HTTP server，由 Spin 托管为长驻进程，Dapr sidecar 双向通信。</p>
+          <div class="bg-gray-950 rounded-lg p-4 mb-4 overflow-x-auto">
+            <pre class="text-xs text-gray-300"><code>外部请求 → Traefik (:80) → Dapr (:3500) → Spin WASM (:80)
+                                ↕
+                          Redis / Consul / ...</code></pre>
+          </div>
+          <div class="space-y-2 text-sm text-gray-400">
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>Nomad Job 含两个 task：spin-webhost + dapr-sidecar</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>支持 service invocation，可被其他服务调用</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i><span>适用于 HTTP API、路由、微服务场景</span></div>
+          </div>
+        </div>
+
+        <!-- Plan 2 -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-8 card-hover">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-bolt text-blue-400"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold">方案二：Dapr WASM Binding</h3>
+              <span class="text-xs text-blue-400 font-medium">无 HTTP server</span>
+            </div>
+          </div>
+          <p class="text-gray-400 text-sm mb-4">业务代码是 stdin/stdout CLI 程序，编译为 wasip1 WASM，由 Dapr 按需加载执行。</p>
+          <div class="bg-gray-950 rounded-lg p-4 mb-4 overflow-x-auto">
+            <pre class="text-xs text-gray-300"><code>外部请求 → Traefik (:80) → Dapr (:3500) → bindings/wasm
+                                ↕                → WASM (stdin→stdout)
+                          Redis / Consul / ...</code></pre>
+          </div>
+          <div class="space-y-2 text-sm text-gray-400">
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i><span>Nomad Job 只有一个 task：dapr-sidecar</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i><span>没有 Spin 参与，WASM 产物上传到 dufs</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-check text-blue-400 mt-0.5"></i><span>适用于事件驱动、定时任务、轻量函数计算</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Multi-language Support -->
+  <section id="languages" class="py-20 px-6">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">多语言支持</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">同一套架构，五种语言自由选择。AI 生成的代码无需修改即可运行。</p>
+
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div v-for="lang in languages" :key="lang.name"
+             class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-center card-hover cursor-default">
+          <i :class="lang.icon" class="text-3xl mb-3" :style="{color: lang.color}"></i>
+          <h4 class="font-semibold text-sm mb-1">{{ lang.name }}</h4>
+          <p class="text-xs text-gray-500">{{ lang.sdk }}</p>
+          <div class="mt-2 flex justify-center gap-1">
+            <span v-if="lang.spin" class="px-1.5 py-0.5 text-[10px] rounded bg-emerald-500/20 text-emerald-400">Spin</span>
+            <span v-if="lang.binding" class="px-1.5 py-0.5 text-[10px] rounded bg-blue-500/20 text-blue-400">Binding</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dapr API -->
+  <section id="dapr-api" class="py-20 px-6 bg-gray-900/50">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">Dapr API 约定</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">
+        所有语言的业务代码通过 HTTP 请求与 Dapr sidecar 交互，地址固定为
+        <code class="text-indigo-400 bg-gray-800 px-2 py-0.5 rounded text-sm">http://127.0.0.1:3500</code>
+      </p>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-gray-700 text-left">
+              <th class="py-3 px-4 text-gray-400 font-medium">操作</th>
+              <th class="py-3 px-4 text-gray-400 font-medium">方法</th>
+              <th class="py-3 px-4 text-gray-400 font-medium">URL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="api in daprApis" :key="api.op" class="border-b border-gray-800 hover:bg-gray-800/50 transition">
+              <td class="py-3 px-4">{{ api.op }}</td>
+              <td class="py-3 px-4">
+                <span class="px-2 py-0.5 rounded text-xs font-mono font-medium"
+                      :class="api.methodClass">{{ api.method }}</span>
+              </td>
+              <td class="py-3 px-4 font-mono text-xs text-gray-300">{{ api.url }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- AI Prompt Quick Reference -->
+      <div class="mt-12 bg-gray-900 border border-indigo-500/30 rounded-xl p-6">
+        <div class="flex items-center gap-2 mb-4">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i>
+          <h3 class="font-semibold text-lg">AI Prompt 速查</h3>
+        </div>
+        <p class="text-gray-400 text-sm mb-4">以下 Prompt 可以直接复制给任何 LLM，生成的代码无需修改即可运行：</p>
+        <div class="space-y-2">
+          <div v-for="prompt in aiPrompts" :key="prompt.scene"
+               class="flex flex-col sm:flex-row sm:items-center gap-2 bg-gray-950 rounded-lg px-4 py-3">
+            <span class="text-xs text-gray-500 shrink-0 w-20">{{ prompt.scene }}</span>
+            <code class="text-xs text-emerald-300 break-all">{{ prompt.text }}</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Deploy -->
+  <section id="deploy" class="py-20 px-6">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">一键部署</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">PowerShell 脚本 + Nomad HTTP API，从编译到上线全自动。</p>
+
+      <div class="grid md:grid-cols-2 gap-8">
+        <!-- Deploy Flow -->
+        <div>
+          <h3 class="font-semibold mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-rocket text-indigo-400"></i> 部署流程
+          </h3>
+          <div class="space-y-3">
+            <div v-for="(step, i) in deploySteps" :key="i"
+                 class="flex items-start gap-3 bg-gray-900 border border-gray-800 rounded-lg p-4">
+              <span class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-xs font-bold shrink-0">{{ i + 1 }}</span>
+              <div>
+                <p class="text-sm font-medium">{{ step.title }}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{{ step.desc }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Deploy Commands -->
+        <div>
+          <h3 class="font-semibold mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-terminal text-emerald-400"></i> 部署命令
+          </h3>
+          <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+            <div>
+              <p class="text-xs text-gray-500 mb-2"># 部署基础设施</p>
+              <code class="text-sm text-emerald-300">.\IaC\nomad\deploy-infra.ps1</code>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 mb-2"># 部署 Spin 应用（方案一）</p>
+              <code class="text-sm text-emerald-300">.\spin-app\deploy.ps1 go|rust|js|ts|python</code>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 mb-2"># 部署 Binding 应用（方案二）</p>
+              <code class="text-sm text-emerald-300">.\dapr-bindings\deploy.ps1 go|rust</code>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 mb-2"># 或使用 just 命令编排</p>
+              <code class="text-sm text-emerald-300">just deploy-all</code>
+            </div>
+          </div>
+
+          <h3 class="font-semibold mt-8 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-memory text-orange-400"></i> 内存配置
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-gray-700 text-left">
+                  <th class="py-2 px-3 text-gray-400">语言</th>
+                  <th class="py-2 px-3 text-gray-400">Spin memory</th>
+                  <th class="py-2 px-3 text-gray-400">Spin max</th>
+                  <th class="py-2 px-3 text-gray-400">Dapr memory</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in memoryConfig" :key="m.lang" class="border-b border-gray-800">
+                  <td class="py-2 px-3 font-medium">{{ m.lang }}</td>
+                  <td class="py-2 px-3 text-gray-400">{{ m.spin }}</td>
+                  <td class="py-2 px-3 text-gray-400">{{ m.spinMax }}</td>
+                  <td class="py-2 px-3 text-gray-400">{{ m.dapr }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Swap Infrastructure -->
+  <section id="swap" class="py-20 px-6 bg-gray-900/50">
+    <div class="max-w-5xl mx-auto text-center">
+      <h2 class="text-3xl font-bold mb-4">换基础设施？改 YAML，不改代码</h2>
+      <p class="text-gray-400 max-w-2xl mx-auto mb-10">
+        业务代码永远只向 <code class="text-indigo-400 bg-gray-800 px-2 py-0.5 rounded text-sm">http://127.0.0.1:3500</code> 发请求，后端是什么由 Dapr component YAML 决定。
+      </p>
+
+      <div class="grid md:grid-cols-3 gap-6 text-left">
+        <div v-for="swap in swapExamples" :key="swap.title"
+             class="bg-gray-900 border border-gray-800 rounded-xl p-6 card-hover">
+          <div class="flex items-center gap-2 mb-3">
+            <i :class="swap.icon" class="text-lg" :style="{color: swap.color}"></i>
+            <h4 class="font-semibold text-sm">{{ swap.title }}</h4>
+          </div>
+          <div class="bg-gray-950 rounded-lg p-3 overflow-x-auto">
+            <pre class="text-xs text-gray-300"><code>{{ swap.yaml }}</code></pre>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">{{ swap.note }}</p>
+        </div>
+      </div>
+
+      <p class="mt-10 text-xl font-bold gradient-text">业务代码零修改。</p>
+    </div>
+  </section>
+
+  <!-- Architecture Overview -->
+  <section class="py-20 px-6">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-4">架构全景</h2>
+      <p class="text-gray-400 text-center max-w-2xl mx-auto mb-12">bridge 网络模式 + Consul 服务发现 + Traefik 自动路由，统一模板参数化部署。</p>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 overflow-x-auto flex justify-center">
+        <pre class="text-xs md:text-sm text-gray-300 leading-relaxed"><code>                    ┌──────────────────────────────────────────────────────────┐
+                    │              远程服务器 (Nomad + Consul + Docker)         │
+                    │                                                          │
+  外部客户端 ──────→ │  Traefik (:80)                                           │
+                    │    ├── /spin-go-app/*     → Dapr → Spin Go (:80)         │
+                    │    ├── /spin-rust-app/*   → Dapr → Spin Rust (:80)       │
+                    │    ├── /spin-js-app/*     → Dapr → Spin JS (:80)         │
+                    │    ├── /spin-ts-app/*     → Dapr → Spin TS (:80)         │
+                    │    ├── /spin-python-app/* → Dapr → Spin Python (:80)     │
+                    │    └── /dapr-bindings/*   → Dapr → WASM binding          │
+                    │                                                          │
+                    │  基础设施: Redis · Placement · Registry · dufs · Jaeger   │
+                    │  Consul (:8500) — 服务发现 + Traefik 路由源               │
+                    └──────────────────────────────────────────────────────────┘
+                                              │
+  Windows (开发机) ── deploy.ps1 ──→ Nomad API (:4646)
+                      build WASM → push ghcr.io / dufs</code></pre>
+      </div>
+
+      <!-- Key Design Points -->
+      <div class="grid md:grid-cols-4 gap-4 mt-8">
+        <div v-for="point in designPoints" :key="point.title"
+             class="bg-gray-900 border border-gray-800 rounded-lg p-4">
+          <i :class="point.icon" class="text-lg mb-2" :style="{color: point.color}"></i>
+          <h4 class="text-sm font-semibold mb-1">{{ point.title }}</h4>
+          <p class="text-xs text-gray-500">{{ point.desc }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toolchain -->
+  <section class="py-20 px-6 bg-gray-900/50">
+    <div class="max-w-4xl mx-auto">
+      <h2 class="text-3xl font-bold text-center mb-12">工具链</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div v-for="tool in toolchain" :key="tool.name"
+             class="bg-gray-900 border border-gray-800 rounded-lg p-4 text-center">
+          <p class="font-semibold text-sm">{{ tool.name }}</p>
+          <p class="text-xs text-gray-500 mt-1">{{ tool.version }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-12 px-6 border-t border-gray-800">
+    <div class="max-w-6xl mx-auto text-center">
+      <p class="gradient-text text-lg font-semibold mb-2">AI 写逻辑 · WASM 跑沙箱 · Dapr 管基建</p>
+      <p class="text-gray-500 text-sm mb-6">Cloud Native 3.0</p>
+      <div class="flex justify-center gap-6 text-gray-500">
+        <a href="https://github.com/mandarenmanman/ofloat" target="_blank" class="hover:text-white transition">
+          <i class="fa-brands fa-github text-xl"></i>
+        </a>
+      </div>
+      <p class="text-xs text-gray-600 mt-6">Apache-2.0 License · ofloat</p>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    return {
+      coreFeatures: [
+        {
+          icon: 'fa-solid fa-cube',
+          iconBg: 'bg-indigo-500/20 text-indigo-400',
+          title: 'WASM 沙箱隔离',
+          desc: 'Spin 托管 WebAssembly 模块，微秒级冷启动，几百 KB 内存占用，天然安全沙箱。'
+        },
+        {
+          icon: 'fa-solid fa-plug',
+          iconBg: 'bg-blue-500/20 text-blue-400',
+          title: 'Dapr 基础设施抽象',
+          desc: '所有基础设施操作 = 向 localhost:3500 发 HTTP 请求。Redis/Kafka/DynamoDB 全透明，换后端只改 YAML。'
+        },
+        {
+          icon: 'fa-solid fa-robot',
+          iconBg: 'bg-emerald-500/20 text-emerald-400',
+          title: 'AI 友好',
+          desc: 'AI 只需要生成纯粹的 HTTP handler 代码，不需要知道背后是 Redis 还是 DynamoDB。Prompt 到生产零摩擦。'
+        }
+      ],
+
+      languages: [
+        { name: 'Rust', icon: 'fa-brands fa-rust', color: '#dea584', sdk: 'spin-sdk 5.2.0', spin: true, binding: true },
+        { name: 'Go', icon: 'fa-brands fa-golang', color: '#00add8', sdk: 'spin-go-sdk v2.2.1', spin: true, binding: true },
+        { name: 'JavaScript', icon: 'fa-brands fa-js', color: '#f7df1e', sdk: 'itty-router 5.0.18', spin: true, binding: false },
+        { name: 'TypeScript', icon: 'fa-brands fa-js', color: '#3178c6', sdk: '@spinframework', spin: true, binding: false },
+        { name: 'Python', icon: 'fa-brands fa-python', color: '#3776ab', sdk: 'spin-sdk 3.1.0', spin: true, binding: false }
+      ],
+
+      daprApis: [
+        { op: '保存状态', method: 'POST', url: '/v1.0/state/statestore', methodClass: 'bg-green-500/20 text-green-400' },
+        { op: '读取状态', method: 'GET', url: '/v1.0/state/statestore/{key}', methodClass: 'bg-blue-500/20 text-blue-400' },
+        { op: '删除状态', method: 'DELETE', url: '/v1.0/state/statestore/{key}', methodClass: 'bg-red-500/20 text-red-400' },
+        { op: '发布消息', method: 'POST', url: '/v1.0/publish/pubsub/{topic}', methodClass: 'bg-green-500/20 text-green-400' },
+        { op: '服务调用', method: 'ANY', url: '/v1.0/invoke/{app-id}/method/{path}', methodClass: 'bg-purple-500/20 text-purple-400' },
+        { op: 'HTTP Binding', method: 'POST', url: '/v1.0/bindings/{binding-name}', methodClass: 'bg-green-500/20 text-green-400' }
+      ],
+
+      aiPrompts: [
+        { scene: '保存状态', text: '向 http://127.0.0.1:3500/v1.0/state/statestore POST 一个 KV JSON 数组' },
+        { scene: '读取状态', text: '从 http://127.0.0.1:3500/v1.0/state/statestore/{key} GET' },
+        { scene: '发布消息', text: '向 http://127.0.0.1:3500/v1.0/publish/pubsub/{topic} POST 消息体' },
+        { scene: '服务调用', text: '向 http://127.0.0.1:3500/v1.0/invoke/{app-id}/method/{path} 发请求' },
+        { scene: 'HTTP 出站', text: '向 http://127.0.0.1:3500/v1.0/bindings/{binding-name} POST binding 请求' }
+      ],
+
+      deploySteps: [
+        { title: '本地编译 WASM', desc: 'Rust/Go/JS/TS/Python → .wasm 产物' },
+        { title: '推送制品', desc: '方案一推送 ghcr.io OCI，方案二上传 dufs' },
+        { title: '模板替换', desc: '读取 .nomad.hcl 模板，替换 <<APP_NAME>> 等占位符' },
+        { title: '提交 Nomad Job', desc: '通过 HTTP API 提交，Force reschedule' }
+      ],
+
+      memoryConfig: [
+        { lang: 'Rust', spin: '256 MB', spinMax: '512 MB', dapr: '256 MB' },
+        { lang: 'Go', spin: '256 MB', spinMax: '512 MB', dapr: '256 MB' },
+        { lang: 'JS', spin: '1024 MB', spinMax: '4096 MB', dapr: '512 MB' },
+        { lang: 'TS', spin: '512 MB', spinMax: '2048 MB', dapr: '256 MB' },
+        { lang: 'Python', spin: '512 MB', spinMax: '2048 MB', dapr: '256 MB' }
+      ],
+
+      swapExamples: [
+        {
+          icon: 'fa-solid fa-database',
+          color: '#dc382c',
+          title: 'Redis（默认）',
+          yaml: 'spec:\n  type: state.redis\n  metadata:\n    - name: redisHost\n      value: "consul-resolved:6379"',
+          note: '当前默认配置，通过 Consul 动态解析地址'
+        },
+        {
+          icon: 'fa-brands fa-aws',
+          color: '#ff9900',
+          title: 'AWS DynamoDB',
+          yaml: 'spec:\n  type: state.aws.dynamodb\n  metadata:\n    - name: region\n      value: "ap-southeast-1"\n    - name: table\n      value: "my-state-table"',
+          note: '切换到 DynamoDB，业务代码零修改'
+        },
+        {
+          icon: 'fa-solid fa-envelope',
+          color: '#00b4d8',
+          title: 'Kafka Pub/Sub',
+          yaml: 'spec:\n  type: pubsub.kafka\n  metadata:\n    - name: brokers\n      value: "kafka:9092"',
+          note: 'Pub/Sub 从 Redis 切换到 Kafka'
+        }
+      ],
+
+      designPoints: [
+        { icon: 'fa-solid fa-network-wired', color: '#818cf8', title: 'bridge 网络', desc: 'Spin + Dapr 共享网络命名空间，内部 127.0.0.1 通信' },
+        { icon: 'fa-solid fa-magnifying-glass', color: '#00d4aa', title: 'Consul 服务发现', desc: 'Placement、Redis 地址全部动态解析，不硬编码 IP' },
+        { icon: 'fa-solid fa-route', color: '#f59e0b', title: 'Traefik 自动路由', desc: '基于 Consul Catalog，注册即自动生成路由规则' },
+        { icon: 'fa-solid fa-file-code', color: '#a78bfa', title: '统一模板', desc: '参数化 HCL 模板，deploy.ps1 替换占位符后提交' }
+      ],
+
+      toolchain: [
+        { name: 'Spin CLI', version: 'v3.6.2' },
+        { name: 'Dapr', version: 'v1.16.9' },
+        { name: 'Nomad', version: 'v1.11.2' },
+        { name: 'Consul', version: '1.22.0' },
+        { name: 'Traefik', version: 'v3.4' },
+        { name: 'Node.js', version: 'v22.17.0' },
+        { name: 'TinyGo', version: '0.35.0' },
+        { name: 'Just', version: 'latest' }
+      ]
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
