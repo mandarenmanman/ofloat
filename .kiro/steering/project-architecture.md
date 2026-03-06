@@ -20,7 +20,7 @@ inclusion: always
 | Python componentize-py | 0.13.3 | requirements.txt |
 | itty-router (JS/TS) | 5.0.18 | package.json |
 | Node.js | v22.17.0 | 构建 JS/TS 用 |
-| Consul | 1.22.5 | WSL 中运行，服务发现 |
+| Consul | 1.22.0 | WSL 中运行，服务发现 |
 | Traefik | v3.4 | Docker 镜像 `localhost:15000/traefik:v3.4` |
 | dufs | v0.45.0 | 文件服务器，方案二 WASM 产物分发 |
 | Just | latest | Monorepo 命令编排，根目录 justfile |
