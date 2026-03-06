@@ -117,8 +117,17 @@ router
     /** 调用外部接口示例 — 经 Dapr HTTP binding 出站 */
     .get('/external/sample', async () => {
         try {
-            const data = await daprHttpBinding('external-http', '/kuaidihelp/smscallback', 'post');
-            return new Response(JSON.stringify({ status: 'ok', data }), {
+            const resp = await fetch(`${DAPR_URL}/v1.0/bindings/external-http`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ operation: 'post', metadata: { path: '/kuaidihelp/smscallback' } }),
+            });
+            const rawText = await resp.text();
+            return new Response(JSON.stringify({
+                status: 'ok',
+                httpStatus: resp.status,
+                rawBody: rawText,
+            }), {
                 headers: { 'content-type': 'application/json' },
             });
         } catch (e) {
