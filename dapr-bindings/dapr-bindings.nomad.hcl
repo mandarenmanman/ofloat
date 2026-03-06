@@ -7,6 +7,12 @@
 job "<<APP_NAME>>" {
   datacenters = ["dc1"]
   type        = "service"
+   
+
+  //配置文件版本号
+  meta {
+    config_version = "20260306"
+  }
 
   group "<<APP_NAME>>" {
     count = 1

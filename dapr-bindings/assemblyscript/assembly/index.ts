@@ -1,11 +1,16 @@
 /**
  * Dapr WASM Binding — AssemblyScript 实现
- * 编译: npm run build
  *
- * 注意: AssemblyScript 编译为纯 WASM 模块，stdin/stdout 需要通过
- * WASI 接口实现。此骨架展示基本的 action 分发逻辑。
- * 实际的 stdin 读取需要 as-wasi 或手动导入 WASI fd_read/fd_write。
+ * 与 Go 版 (dev-wasm-go WasiRoundTripper) 的对应关系：
+ * - Go：net/http 经 wasiclient.WasiRoundTripper 走 wasi-http host（Dapr wazero 提供）。
+ * - 本实现：通过 wasi_http_raw / wasi_http_request 直接调用同一套 wasi-http ABI
+ *   （types / streams / default-outgoing-HTTP），与 dev-wasm-ts 一致，和 Dapr 的 host 兼容。
+ *
+ * 编译：npm run build（使用 --runtime stub 减少对 env 的依赖）。
+ * 若 Dapr 报 module[env] not instantiated，说明当前 wazero 未提供 env，请改用 Go 或 TS 版 WASM。
  */
+
+import { request, HeaderValue } from "./wasi_http_request";
 
 // @ts-ignore: decorator
 @external("wasi_snapshot_preview1", "fd_read")
@@ -24,6 +29,12 @@ function writeStdout(s: string): void {
   fd_write(1, iov, 1, changetype<i32>(nwritten));
 }
 
+// Required by some WASI interface adapters / component shims.
+// dev-wasm/dev-wasm-ts exports this for wasi-http examples.
+export function cabi_realloc(_a: usize, _b: usize, _c: usize, len: usize): usize {
+  return heap.alloc(len);
+}
+
 function readStdin(): string {
   const bufSize = 65536;
   const buf = heap.alloc(bufSize) as i32;
@@ -36,6 +47,21 @@ function readStdin(): string {
   const bytesRead = load<i32>(changetype<i32>(nread));
   if (bytesRead <= 0) return "";
   return String.UTF8.decodeUnsafe(buf, bytesRead);
+}
+
+function jsonEscape(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c == 34) out += "\\\""; // "
+    else if (c == 92) out += "\\\\"; // \
+    else if (c == 10) out += "\\n";
+    else if (c == 13) out += "\\r";
+    else if (c == 9) out += "\\t";
+    else if (c < 32) out += " ";
+    else out += s.charAt(i);
+  }
+  return out;
 }
 
 /** 简易 JSON 字段提取 */
@@ -57,11 +83,11 @@ function jsonGetString(json: string, key: string): string {
 }
 
 function writeResponse(status: string, action: string, resultKey: string, resultVal: string): void {
-  writeStdout('{"status":"' + status + '","action":"' + action + '","result":{"' + resultKey + '":"' + resultVal + '"}}');
+  writeStdout('{"status":"' + jsonEscape(status) + '","action":"' + jsonEscape(action) + '","result":{"' + jsonEscape(resultKey) + '":"' + jsonEscape(resultVal) + '"}}');
 }
 
 function writeError(action: string, error: string): void {
-  writeStdout('{"status":"error","action":"' + action + '","error":"' + error + '"}');
+  writeStdout('{"status":"error","action":"' + jsonEscape(action) + '","error":"' + jsonEscape(error) + '"}');
 }
 
 export function _start(): void {
@@ -87,7 +113,14 @@ export function _start(): void {
     }
     writeResponse("ok", "upper", "data", data.toUpperCase());
   } else if (action == "http-test") {
-    writeError("http-test", "HTTP not available in AssemblyScript build");
+    // Usage:
+    // {"action":"http-test","url":"https://postman-echo.com/get"}
+    const url = jsonGetString(input, "url");
+    const target = url.length > 0 ? url : "https://postman-echo.com/get";
+    // @ts-ignore: AS doesn't require explicit constructor fields
+    const ua = { name: "User-Agent", value: "dapr-bindings-assemblyscript" } as HeaderValue;
+    const resp = request("GET", target, null, [ua]);
+    writeResponse("ok", "http-test", "result", "status=" + resp.StatusCode.toString() + "; body=" + resp.Body);
   } else if (action == "save-state") {
     writeError("save-state", "HTTP not available in AssemblyScript build");
   } else if (action == "get-state") {

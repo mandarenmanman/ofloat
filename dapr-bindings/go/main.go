@@ -1,6 +1,7 @@
 // Dapr WASM binding 支持 wasi-http，需用 dev-wasm-go 的 WasiRoundTripper。
 // 必须用 TinyGo 编译（与 Dapr components-contrib testdata 一致），且锁定 dev-wasm-go 版本。
 // 编译: tinygo build -o app.wasm --no-debug -target=wasi .
+// https://github.com/dapr/components-contrib/tree/main/common/wasm
 package main
 
 import (
