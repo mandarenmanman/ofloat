@@ -21,7 +21,7 @@ job "<<APP_NAME>>" {
       # 在隔离网络命名空间内通常不可达；同时 8.8.8.8 在当前环境里也可能超时。
       # 显式指定当前环境更容易连通的 DNS，供 Dapr sidecar 的 HTTP binding 解析外部域名。
       dns {
-        servers = ["223.5.5.5", "180.76.76.76", "1.1.1.1"]
+        servers = ["114.114.114.114", "8.8.8.8", "192.168.3.63"] # 根据你的环境调整
       }
       port "dapr-http" {
         to = 3500
@@ -85,7 +85,7 @@ EOF
         ports      = ["dapr-http", "dapr-grpc"]
         entrypoint = ["/bin/sh", "-c"]
         args       = [
-          "/usr/local/bin/daprd -app-id <<APP_NAME>> -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address ${PLACEMENT_ADDR} -resources-path /local/components -config /local/config/config.yaml"
+          "/usr/local/bin/daprd -app-id <<APP_NAME>> -app-port 80 -dapr-http-port 3500 -dapr-grpc-port 50001 -placement-host-address $PLACEMENT_ADDR -resources-path /local/components -config /local/config/config.yaml"
         ]
       }
 
