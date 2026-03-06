@@ -152,6 +152,10 @@ metadata:
 spec:
   tracing:
     samplingRate: "1"
+    otel:
+      endpointAddress: "{{ range service "jaeger" }}{{ .Address }}:4318{{ end }}"
+      isSecure: false
+      protocol: http
   metric:
     enabled: true
   logging:

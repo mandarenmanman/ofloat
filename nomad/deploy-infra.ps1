@@ -9,7 +9,8 @@ $Jobs = @(
     @{ Name = "redis";           File = "redis.nomad.hcl" },
     @{ Name = "dapr-placement";  File = "dapr-placement.nomad.hcl" },
     @{ Name = "registry";        File = "registry.nomad.hcl" },
-    @{ Name = "dufs";            File = "dufs.nomad.hcl" }
+    @{ Name = "dufs";            File = "dufs.nomad.hcl" },
+    @{ Name = "jaeger";          File = "jaeger.nomad.hcl" }
 )
 
 function Info($msg)  { Write-Host "[INFO] $msg" -ForegroundColor Green }
