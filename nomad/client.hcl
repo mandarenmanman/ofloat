@@ -25,6 +25,8 @@ plugin "raw_exec" {
   }
 }
 
+# 服务发现：Nomad 用此地址查 Consul 渲染模板（如 {{ range service "redis" }}）。
+# 若 Consul 与 Nomad client 不在同一台机，改为 Consul 实际地址，例如 "192.168.3.63:8500"。
 consul {
   address             = "127.0.0.1:8500"
   server_service_name = "nomad-server"
