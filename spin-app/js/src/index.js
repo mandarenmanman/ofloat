@@ -9,12 +9,18 @@ import { AutoRouter } from 'itty-router';
 /** Dapr Sidecar HTTP 地址（bridge 网络模式下默认端口 3500） */
 const DAPR_URL = 'http://127.0.0.1:3500';
 
-/** Consul 地址（内网），需在 spin.toml allowed_outbound_hosts 放行 */
-const CONSUL_BASE = 'http://192.168.3.63:8500';
-const CONSUL_NODES_URL = `${CONSUL_BASE}/v1/catalog/nodes`;
-
-/** 外部接口示例：调用前必须在 spin.toml 的 allowed_outbound_hosts 里加入对应 host */
-const EXTERNAL_API_URL = 'http://api.24box.cn:9002/kuaidihelp/smscallback';
+/** 通过 Dapr HTTP output binding 发起请求，由 sidecar 出站，避免 Spin 在容器内 NetworkError */
+async function daprHttpBinding(bindingName, path) {
+    const resp = await fetch(`${DAPR_URL}/v1.0/bindings/${bindingName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation: 'get', metadata: { path } }),
+    });
+    if (!resp.ok) throw new Error(`binding ${resp.status}: ${await resp.text()}`);
+    const j = await resp.json();
+    const raw = j.data != null ? atob(j.data) : '';
+    try { return JSON.parse(raw); } catch { return raw; }
+}
 
 let router = AutoRouter();
 
@@ -93,48 +99,30 @@ router
         }
     })
 
-    /** 查询 Consul 节点信息（内网） */
+    /** 查询 Consul 节点信息 — 经 Dapr HTTP binding 出站 */
     .get('/consul/nodes', async () => {
         try {
-            const resp = await fetch(CONSUL_NODES_URL);
-            const body = await resp.text();
-            let parsed;
-            try { parsed = JSON.parse(body); } catch { parsed = body; }
-            return new Response(JSON.stringify({
-                status: 'ok',
-                nodes: parsed,
-            }), {
+            const parsed = await daprHttpBinding('consul-http', '/v1/catalog/nodes');
+            return new Response(JSON.stringify({ status: 'ok', nodes: parsed }), {
                 headers: { 'content-type': 'application/json' },
             });
         } catch (e) {
-            return new Response(JSON.stringify({
-                status: 'error',
-                error: e.toString(),
-            }), {
+            return new Response(JSON.stringify({ status: 'error', error: e.toString() }), {
                 status: 502,
                 headers: { 'content-type': 'application/json' },
             });
         }
     })
 
-    /** 调用外部接口示例：需在 spin.toml allowed_outbound_hosts 中加入该 host */
+    /** 调用外部接口示例 — 经 Dapr HTTP binding 出站 */
     .get('/external/sample', async () => {
         try {
-            const resp = await fetch(EXTERNAL_API_URL);
-            const body = await resp.text();
-            let parsed;
-            try { parsed = JSON.parse(body); } catch { parsed = body; }
-            return new Response(JSON.stringify({
-                status: 'ok',
-                data: parsed,
-            }), {
+            const data = await daprHttpBinding('external-http', '/kuaidihelp/smscallback');
+            return new Response(JSON.stringify({ status: 'ok', data }), {
                 headers: { 'content-type': 'application/json' },
             });
         } catch (e) {
-            return new Response(JSON.stringify({
-                status: 'error',
-                error: e.toString(),
-            }), {
+            return new Response(JSON.stringify({ status: 'error', error: e.toString() }), {
                 status: 502,
                 headers: { 'content-type': 'application/json' },
             });

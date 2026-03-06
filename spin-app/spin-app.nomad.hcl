@@ -17,19 +17,17 @@ job "<<APP_NAME>>" {
 
     network {
       mode = "bridge"
-      # bridge 模式下 allocation 继承主机 DNS（如 127.0.0.53），在隔离网络命名空间内不可达，导致外网域名解析失败（NetworkError）。
-      # 显式指定公网 DNS 使 Spin 应用能解析并访问外网（如 api.24box.cn、Consul 等）。
+      # bridge 模式下 allocation 继承主机 DNS（如 127.0.0.53 / 127.0.0.42）时，
+      # 在隔离网络命名空间内通常不可达；同时 8.8.8.8 在当前环境里也可能超时。
+      # 显式指定当前环境更容易连通的 DNS，供 Dapr sidecar 的 HTTP binding 解析外部域名。
       dns {
-        servers = ["8.8.8.8", "8.8.4.4"]
+        servers = ["223.5.5.5", "180.76.76.76", "1.1.1.1"]
       }
       port "dapr-http" {
         to = 3500
       }
       port "dapr-grpc" {
         to = 50001
-      }
-      port "app" {
-        to = 80
       }
     }
 
@@ -50,28 +48,6 @@ job "<<APP_NAME>>" {
       check {
         type     = "http"
         path     = "/v1.0/healthz"
-        interval = "10s"
-        timeout  = "2s"
-      }
-    }
-
-    # 直连应用端口（不经过 Dapr），用于需要直连 Spin 的场景
-    service {
-      name     = "<<APP_NAME>>-app"
-      port     = "app"
-      provider = "consul"
-
-      tags = [
-        "traefik.enable=true",
-        "traefik.http.routers.<<APP_NAME>>-app.rule=PathPrefix(`/<<APP_NAME>>-app`)",
-        "traefik.http.routers.<<APP_NAME>>-app.entrypoints=web",
-        "traefik.http.middlewares.<<APP_NAME>>-app-strip.stripprefix.prefixes=/<<APP_NAME>>-app",
-        "traefik.http.routers.<<APP_NAME>>-app.middlewares=<<APP_NAME>>-app-strip",
-      ]
-
-      check {
-        type     = "http"
-        path     = "/health"
         interval = "10s"
         timeout  = "2s"
       }
@@ -162,6 +138,43 @@ spec:
       value: ""
 EOF
         destination = "local/components/pubsub.yaml"
+      }
+
+      # 外部 HTTP 调用走 Dapr binding，由 sidecar 出站，避免 Spin 在 bridge 下 NetworkError
+      template {
+        data        = <<-EOF
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: consul-http
+spec:
+  type: bindings.http
+  version: v1
+  metadata:
+    - name: url
+      value: "http://192.168.3.63:8500"
+    - name: direction
+      value: "output"
+EOF
+        destination = "local/components/consul-http.yaml"
+      }
+
+      template {
+        data        = <<-EOF
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: external-http
+spec:
+  type: bindings.http
+  version: v1
+  metadata:
+    - name: url
+      value: "http://api.24box.cn:9002"
+    - name: direction
+      value: "output"
+EOF
+        destination = "local/components/external-http.yaml"
       }
 
       template {
