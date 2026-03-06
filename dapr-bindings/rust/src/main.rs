@@ -1,117 +1,56 @@
 /// Dapr WASM Binding — Rust 实现
 /// 编译: cargo build --target wasm32-wasip1 --release
 ///
-/// stdin/stdout JSON 协议，与 Go 版本行为一致
+/// stdin/stdout JSON 协议，与 Go 版本行为一致。
+/// HTTP 出站请求通过 wasi_experimental_http host ABI 实现，
+/// 与 Dapr wazero 运行时提供的 host 函数兼容。
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 
-const _DAPR_URL: &str = "http://127.0.0.1:3500";
+const DAPR_URL: &str = "http://127.0.0.1:3500";
 
-#[derive(Deserialize)]
-struct Request {
-    action: Option<String>,
-    data: Option<serde_json::Value>,
-}
+// ─── wasi_experimental_http FFI ───────────────────────────────────────────────
+// Dapr 的 wazero 运行时实现了 wasi_experimental_http 模块，提供以下 host 函数：
+//   req, close, header_get, headers_get_all, body_read
+// 与 deislabs/wasi-experimental-http 和 dev-wasm-go 使用同一套 ABI。
 
-#[derive(Serialize)]
-struct Response {
-    status: String,
-    action: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    result: Option<serde_json::Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
-}
+mod wasi_http {
+    type Handle = i32;
 
-fn write_response(resp: &Response) {
-    print!("{}", serde_json::to_string(resp).unwrap());
-}
+    #[link(wasm_import_module = "wasi_experimental_http")]
+    extern "C" {
+        fn req(
+            url_ptr: *const u8,
+            url_len: usize,
+            method_ptr: *const u8,
+            method_len: usize,
+            headers_ptr: *const u8,
+            headers_len: usize,
+            body_ptr: *const u8,
+            body_len: usize,
+            status_code_ptr: *mut u16,
+            handle_ptr: *mut Handle,
+        ) -> u32;
 
-fn main() {
-    let mut input = String::new();
-    if std::io::stdin().read_to_string(&mut input).is_err() {
-        write_response(&Response {
-            status: "error".into(),
-            action: "".into(),
-            result: None,
-            error: Some("read stdin failed".into()),
-        });
-        return;
+        fn close(handle: Handle) -> u32;
+
+        fn body_read(
+            handle: Handle,
+            buf_ptr: *mut u8,
+            buf_len: usize,
+            written_ptr: *mut usize,
+        ) -> u32;
     }
 
-    // 空输入 = 健康检查
-    if input.trim().is_empty() {
-        write_response(&Response {
-            status: "healthy".into(),
-            action: "health".into(),
-            result: Some(serde_json::json!({"mode": "dapr-bindings-wasm-rust"})),
-            error: None,
-        });
-        return;
+    pub struct Response {
+        handle: Handle,
+        pub status_code: u16,
     }
 
-    let req: Request = match serde_json::from_str(&input) {
-        Ok(r) => r,
-        Err(_) => {
-            write_response(&Response {
-                status: "ok".into(),
-                action: "echo".into(),
-                result: Some(serde_json::json!({"raw": input})),
-                error: None,
-            });
-            return;
+    impl Drop for Response {
+        fn drop(&mut self) {
+            unsafe { close(self.handle); }
         }
-    };
-
-    let action = req.action.as_deref().unwrap_or("");
-    match action {
-        "health" => write_response(&Response {
-            status: "healthy".into(),
-            action: "health".into(),
-            result: Some(serde_json::json!({"mode": "dapr-bindings-wasm-rust"})),
-            error: None,
-        }),
-        "echo" => write_response(&Response {
-            status: "ok".into(),
-            action: "echo".into(),
-            result: Some(serde_json::json!({"data": req.data})),
-            error: None,
-        }),
-        "http-test" => write_response(&Response {
-            status: "error".into(),
-            action: "http-test".into(),
-            result: None,
-            error: Some("HTTP client not available in Rust WASM build".into()),
-        }),
-        "save-state" => write_response(&Response {
-            status: "error".into(),
-            action: "save-state".into(),
-            result: None,
-            error: Some("HTTP client not available in Rust WASM build".into()),
-        }),
-        "get-state" => write_response(&Response {
-            status: "error".into(),
-            action: "get-state".into(),
-            result: None,
-            error: Some("HTTP client not available in Rust WASM build".into()),
-        }),
-        "upper" => {
-            let s = req.data
-                .as_ref()
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            write_response(&Response {
-                status: "ok".into(),
-                action: "upper".into(),
-                result: Some(serde_json::json!({"data": s.to_uppercase()})),
-                error: None,
-            });
-        }
-        _ => write_response(&Response {
-            status: "error".into(),
-            action: action.into(),
-            result: None,
-            error: Some(format!("unknown action: {}", action)),
-        }),
     }
-}
+
+    impl Response {
