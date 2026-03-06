@@ -20,7 +20,7 @@ inclusion: always
 | Python componentize-py | 0.13.3 | requirements.txt |
 | itty-router (JS/TS) | 5.0.18 | package.json |
 | Node.js | v22.17.0 | 构建 JS/TS 用 |
-| Consul | 1.22.0 | WSL 中运行，服务发现 |
+| Consul | 1.22.0 | 远程服务器运行，服务发现（注意：1.22.4+ UI 有已知 bug） |
 | Traefik | v3.4 | Docker 镜像 `localhost:15000/traefik:v3.4` |
 | dufs | v0.45.0 | 文件服务器，方案二 WASM 产物分发 |
 | Just | latest | Monorepo 命令编排，根目录 justfile |
@@ -37,7 +37,7 @@ inclusion: always
 - 适用于：需要 HTTP API、路由、被其他服务调用的场景
 
 ### 方案二：Dapr WASM Binding（无 HTTP server）
-- 业务代码是 stdin/stdout CLI 程序，用标准 Go 编译成 `wasip1` WASM
+- 业务代码是 stdin/stdout CLI 程序，编译成 `wasip1` WASM
 - 没有 Spin 参与，WASM 产物上传到 dufs，Dapr 通过 `bindings.wasm` component 加载执行
 - sidecar 无 `-app-port`，是唯一进程，按需启动 WASM
 - 不支持 service invocation，只能通过 `/v1.0/bindings/wasm` API 调用
@@ -66,93 +66,85 @@ inclusion: always
 ## 项目结构
 
 ```
-spin-app/               # 方案一：Spin WASM HTTP 应用
-  rust/                 # Rust WASM 应用
-    src/lib.rs          # 业务逻辑入口
-    Cargo.toml          # 依赖只有 spin-sdk + anyhow
-    spin.toml           # Spin 路由配置
-    spin-rust-app.nomad.hcl  # Nomad Job 定义
-    deploy.ps1          # 部署脚本
+spin-app/                       # 方案一：Spin WASM HTTP 应用
+  spin-app.nomad.hcl            # 统一 Nomad Job 定义（所有语言共用）
+  deploy.ps1                    # 统一部署脚本
+  rust/                         # Rust WASM 应用
+    src/lib.rs
+    Cargo.toml
+    spin.toml
+  js/                           # JavaScript WASM 应用
+    src/index.js
+    package.json
+    spin.toml
+  go/                           # Go WASM 应用
+    main.go
+    go.mod
+    spin.toml
+  ts/                           # TypeScript WASM 应用
+    src/index.ts
+    package.json
+    tsconfig.json
+    spin.toml
+  python/                       # Python WASM 应用
+    app.py
+    requirements.txt
+    spin.toml
 
-  js/                   # JavaScript WASM 应用
-    src/index.js        # 业务逻辑入口
-    package.json        # 依赖只有 itty-router + spin SDK
-    spin.toml           # Spin 路由配置
-    spin-js-app.nomad.hcl # Nomad Job 定义
-    deploy.ps1          # 部署脚本
+dapr-bindings/                  # 方案二：Dapr WASM Binding 应用
+  dapr-bindings.nomad.hcl       # 统一 Nomad Job 定义
+  deploy.ps1                    # 统一部署脚本
+  go/                           # Go 实现
+    main.go
+    go.mod
+    build.sh
+    test-api.sh
+    test-local.ps1
+  rust/                         # Rust 实现
+    src/main.rs
+    Cargo.toml
+    .devcontainer/
 
-  go/                   # Go WASM 应用
-    main.go             # 业务逻辑入口
-    go.mod              # 依赖只有 spin-go-sdk
-    spin.toml           # Spin 路由配置
-    spin-go-app.nomad.hcl # Nomad Job 定义
-    deploy.ps1          # 部署脚本（含 Go 1.23 切换逻辑）
+IaC/                            # 基础设施即代码
+  consul/                       # Consul 配置与安装脚本
+    consul.hcl
+    install.sh
+    start.sh
+  dapr/                         # 自定义 daprd 镜像
+    Dockerfile
+    build-and-push.ps1
+  nomad/                        # Nomad 配置与基础设施 Job
+    server.hcl
+    client.hcl
+    redis.nomad.hcl
+    dapr-placement.nomad.hcl
+    registry.nomad.hcl
+    dufs.nomad.hcl
+    jaeger.nomad.hcl
+    deploy-infra.ps1
+    deploy-infra.sh
+  traefik/                      # Traefik 反向代理
+    traefik.nomad.hcl
+    deploy.ps1
 
-  ts/                   # TypeScript WASM 应用
-    src/index.ts        # 业务逻辑入口
-    package.json        # 依赖同 JS 应用 + typescript
-    tsconfig.json       # TypeScript 配置
-    spin.toml           # Spin 路由配置
-    spin-ts-app.nomad.hcl # Nomad Job 定义
-    deploy.ps1          # 部署脚本
-
-  python/               # Python WASM 应用
-    app.py              # 业务逻辑入口
-    requirements.txt    # 依赖只有 spin-sdk + componentize-py
-    spin.toml           # Spin 路由配置
-    spin-python-app.nomad.hcl # Nomad Job 定义
-    deploy.ps1          # 部署脚本（含 venv 创建逻辑）
-
-dapr-bindings/          # 方案二：Dapr WASM Binding 应用
-  go/                   # Go 实现（现有）
-    main.go             # 业务逻辑入口（stdin/stdout CLI）
-    go.mod              # 标准 Go（非 Spin SDK）
-    dapr-bindings.nomad.hcl # Nomad Job（仅 dapr-sidecar task）
-    deploy.ps1          # 部署脚本（含 dufs 上传）
-    test-api.sh         # WSL 接口测试脚本
-    test-local.ps1      # 本地 Docker 测试脚本
-  c/                    # C/C++ 实现
-    main.c              # 业务逻辑入口
-    Makefile            # wasi-sdk 编译
-    .devcontainer/      # devcontainer 配置
-  rust/                 # Rust 实现
-    src/main.rs         # 业务逻辑入口
-    Cargo.toml          # serde + serde_json
-    .devcontainer/      # devcontainer 配置
-  assemblyscript/       # AssemblyScript 实现
-    assembly/index.ts   # 业务逻辑入口
-    package.json        # assemblyscript 编译器
-    .devcontainer/      # devcontainer 配置
-  cpp/                  # C++ 实现
-    main.cpp            # 业务逻辑入口
-    Makefile            # wasi-sdk 编译 (clang++)
-    .devcontainer/      # devcontainer 配置
-  ts/                   # TypeScript 实现
-    src/index.ts        # 业务逻辑入口
-    package.json        # esbuild + typescript
-    tsconfig.json       # TypeScript 配置
-    build.mjs           # esbuild 构建脚本
-    .devcontainer/      # devcontainer 配置
-
-nomad/                  # 基础设施
-  redis.nomad.hcl
-  dapr-placement.nomad.hcl
-  registry.nomad.hcl
+scripts/                        # 运维脚本
+  check-consul-services.ps1
+  check-dapr-bindings.ps1
 ```
 
 ## 新增应用的模式
 
 ### 新增 Spin 应用（方案一）
 1. 在 `spin-app/` 下创建以语言命名的子目录（如 `spin-app/csharp/`）
-2. 复制对应语言模板的结构
-3. 创建对应的 `.nomad.hcl` 和 `deploy.ps1`
+2. 复制对应语言模板的结构（业务入口 + 依赖文件 + spin.toml）
+3. 在 `spin-app/spin-app.nomad.hcl` 中添加对应的 task group
 4. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
 
 ### 新增 Binding 应用（方案二）
-1. 在项目根目录创建 `dapr-{name}/` 目录
-2. 创建 `main.go`（stdin/stdout CLI 模式）、`go.mod`（纯标准库）
-3. 创建 `{name}.nomad.hcl`（仅 dapr-sidecar task + wasm binding component）
-4. 创建 `deploy.ps1`（编译 + dufs 上传 + Nomad API 提交）
+1. 在 `dapr-bindings/` 下创建以语言命名的子目录
+2. 创建业务入口文件（stdin/stdout CLI 模式）和依赖文件
+3. 在 `dapr-bindings/dapr-bindings.nomad.hcl` 中添加对应配置
+4. 编译产物上传到 dufs
 
 ## 部署相关
 
@@ -160,24 +152,23 @@ nomad/                  # 基础设施
 - WASM 制品推送到 ghcr.io OCI registry
 - Nomad Job 通过 HTTP API (localhost:4646) 提交，不用 nomad CLI
 - 凭证在根目录 `.env.ps1` 中，已 gitignore
-- Nomad 运行在 WSL 中，Spin 用 raw_exec driver 从 ghcr.io 拉取 WASM
+- Nomad 运行在远程服务器（WSL 环境），Spin 用 raw_exec driver 从 ghcr.io 拉取 WASM
+- 基础设施 Job（Redis、Placement、Registry 等）通过 `IaC/nomad/deploy-infra.ps1` 统一部署
 
 ## 测试与验证
 
-- Nomad、Spin、Dapr sidecar 全部运行在 WSL 中，服务端口绑定在 WSL 的网络命名空间内
-- 从 Windows PowerShell 直接 `curl localhost:{port}` 无法访问 WSL 内的服务
+- Nomad、Spin、Dapr sidecar 全部运行在远程服务器上，服务端口绑定在服务器网络命名空间内
 - 部署后验证服务健康状态，必须通过 WSL 执行请求：`wsl curl -s http://localhost:{dapr-port}/v1.0/invoke/{app-id}/method/health`
-- 绝对不要用 Windows 原生的 `curl.exe` 或 `Invoke-WebRequest` 去测试部署在 WSL/Nomad 中的服务
+- 绝对不要用 Windows 原生的 `curl.exe` 或 `Invoke-WebRequest` 去测试部署在远程服务器/Nomad 中的服务
+- Consul UI 通过公网 IP 访问：`http://{server-ip}:8500/ui/`
 
 ## Nomad Job 注意事项
 
 ### 内存配置
 - Spin WASM 进程在启动阶段（"Preparing Wasm modules"）内存消耗较高，如果 Nomad 分配的内存不足，进程会被 OOM Kill（Exit Code 137）
-- JS WASM 应用启动内存开销比 Rust 大，`spin-webhost` task 建议：
-  - Rust 应用：`memory = 256`，`memory_max = 512`
-  - Go 应用：`memory = 256`，`memory_max = 512`（产物小，接近 Rust）
-  - Python 应用：`memory = 512`，`memory_max = 2048`（内嵌 CPython 解释器，接近 JS）
-  - JS/TS 应用：`memory = 512`，`memory_max = 2048`
+- `spin-webhost` task 建议：
+  - Rust/Go 应用：`memory = 256`，`memory_max = 512`
+  - Python/JS/TS 应用：`memory = 512`，`memory_max = 2048`
 - Dapr sidecar task 建议 `memory = 256`，最低不低于 128
 
 ### Dapr Sidecar 配置要点
@@ -191,4 +182,4 @@ nomad/                  # 基础设施
 ### Consul 服务发现
 - placement 地址通过 `{{ range service "dapr-placement" }}{{ .Address }}:{{ .Port }}{{ end }}` 解析，注入为 `PLACEMENT_ADDR` 环境变量
 - Redis 地址通过 `{{ range service "redis" }}{{ .Address }}:{{ .Port }}{{ end }}` 解析，直接用在 statestore.yaml 和 pubsub.yaml 模板中
-- 不要在 nomad job 中硬编码 `172.26.64.1` 等 IP 地址
+- 不要在 nomad job 中硬编码 IP 地址
