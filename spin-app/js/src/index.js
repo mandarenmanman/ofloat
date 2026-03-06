@@ -10,11 +10,11 @@ import { AutoRouter } from 'itty-router';
 const DAPR_URL = 'http://127.0.0.1:3500';
 
 /** 通过 Dapr HTTP output binding 发起请求，由 sidecar 出站，避免 Spin 在容器内 NetworkError */
-async function daprHttpBinding(bindingName, path) {
+async function daprHttpBinding(bindingName, path, operation = 'get') {
     const resp = await fetch(`${DAPR_URL}/v1.0/bindings/${bindingName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operation: 'get', metadata: { path } }),
+        body: JSON.stringify({ operation, metadata: { path } }),
     });
     if (!resp.ok) throw new Error(`binding ${resp.status}: ${await resp.text()}`);
     const j = await resp.json();
@@ -117,7 +117,7 @@ router
     /** 调用外部接口示例 — 经 Dapr HTTP binding 出站 */
     .get('/external/sample', async () => {
         try {
-            const data = await daprHttpBinding('external-http', '/kuaidihelp/smscallback');
+            const data = await daprHttpBinding('external-http', '/kuaidihelp/smscallback', 'post');
             return new Response(JSON.stringify({ status: 'ok', data }), {
                 headers: { 'content-type': 'application/json' },
             });

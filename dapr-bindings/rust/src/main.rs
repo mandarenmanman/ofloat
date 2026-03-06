@@ -9,10 +9,39 @@
 /// 不再使用 `wasi-experimental-http` crate（其模块名与 Dapr 当前环境不匹配）。
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::alloc::{alloc, dealloc, realloc, Layout};
 use std::io::{Read, Write};
 use urlencoding::encode;
 
 const DAPR_URL: &str = "http://127.0.0.1:3500";
+
+/// Canonical ABI reallocator used by the host to place list/string results into guest memory.
+/// Go/TinyGo exports this automatically; Rust needs to provide it explicitly.
+#[no_mangle]
+pub unsafe extern "C" fn cabi_realloc(
+    old_ptr: *mut u8,
+    old_size: usize,
+    align: usize,
+    new_size: usize,
+) -> *mut u8 {
+    let align = align.max(1);
+
+    if new_size == 0 {
+        if !old_ptr.is_null() && old_size != 0 {
+            let layout = Layout::from_size_align_unchecked(old_size, align);
+            dealloc(old_ptr, layout);
+        }
+        return std::ptr::null_mut();
+    }
+
+    if old_ptr.is_null() || old_size == 0 {
+        let layout = Layout::from_size_align_unchecked(new_size, align);
+        return alloc(layout);
+    }
+
+    let old_layout = Layout::from_size_align_unchecked(old_size, align);
+    realloc(old_ptr, old_layout, new_size)
+}
 
 mod wasi_http {
     pub type Handle = i32;
