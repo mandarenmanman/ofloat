@@ -26,7 +26,8 @@ if (Test-Path $envFile) { . $envFile }
 # App name
 $AppName = "spin-$Lang-app"
 if ($Lang -eq "rust") { $AppName = "spin-app" }
-$ImageTag = "${AppName}:latest"
+$ConfigVersion = Get-Date -Format "yyyyMMddHHmmss"
+$ImageTag = "${AppName}:${ConfigVersion}"
 
 # Memory config per language
 $memConfig = @{
@@ -111,6 +112,8 @@ Info "=== Generate Nomad Job HCL ==="
 $tplFile = Join-Path $RootDir "spin-app.nomad.hcl"
 $hcl = [System.IO.File]::ReadAllText($tplFile)
 $hcl = $hcl.Replace("<<APP_NAME>>", $AppName)
+$hcl = $hcl.Replace("<<IMAGE_TAG>>", $ImageTag)
+$hcl = $hcl.Replace("<<CONFIG_VERSION>>", $ConfigVersion)
 $hcl = $hcl.Replace("<<SPIN_MEMORY>>", "$($mem.spin)")
 $hcl = $hcl.Replace("<<SPIN_MEMORY_MAX>>", "$($mem.spinMax)")
 $hcl = $hcl.Replace("<<DAPR_MEMORY>>", "$($mem.dapr)")
@@ -142,4 +145,4 @@ if ($result.EvalID) {
 }
 
 Write-Host ""
-Info "Traefik: http://localhost/${AppName}/health"
+Info "Traefik: http://localhost/${AppName}/health  (image: ${ImageTag})"

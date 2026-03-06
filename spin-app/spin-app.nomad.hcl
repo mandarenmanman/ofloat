@@ -1,6 +1,8 @@
 # Spin App Nomad Job Template
 # 由 deploy.ps1 读取并替换以下变量后提交:
 #   <<APP_NAME>>        - 应用名称, 如 spin-go-app
+#   <<IMAGE_TAG>>       - OCI 镜像 tag, 如 spin-go-app:20260306143000
+#   <<CONFIG_VERSION>> - 部署版本号，用于强制 Nomad 生成新 alloc
 #   <<SPIN_MEMORY>>     - spin-webhost memory (MB)
 #   <<SPIN_MEMORY_MAX>> - spin-webhost memory_max (MB)
 #   <<DAPR_MEMORY>>     - dapr-sidecar memory (MB)
@@ -11,6 +13,10 @@
 job "<<APP_NAME>>" {
   datacenters = ["dc1"]
   type        = "service"
+
+  meta {
+    config_version = "<<CONFIG_VERSION>>"
+  }
 
   group "spin-dapr" {
     count = 1
@@ -58,7 +64,7 @@ job "<<APP_NAME>>" {
 
       config {
         command = "/bin/sh"
-        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/<<APP_NAME>>:latest --listen 0.0.0.0:80 -k"]
+        args    = ["-c", "/usr/local/bin/spin up --from-registry $REGISTRY_ADDR/<<IMAGE_TAG>> --listen 0.0.0.0:80 -k"]
       }
 
       template {
