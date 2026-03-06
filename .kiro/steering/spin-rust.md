@@ -20,15 +20,30 @@ serde_json = "1"                                        # 按需
 ## 代码模板
 
 ```rust
-use spin_sdk::http::{IntoResponse, Request, Response};
+use spin_sdk::http::{IntoResponse, Method, Request, Response};
 use spin_sdk::http_component;
 
-#[http_component]
-fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
-    let path = req.path();
-    let method = req.method().as_str();
+/// Method 枚举转字符串（spin-sdk 5.x 的 Method 没有 as_str()）
+fn method_str(m: &Method) -> &'static str {
+    match m {
+        Method::Get => "GET",
+        Method::Post => "POST",
+        Method::Put => "PUT",
+        Method::Delete => "DELETE",
+        Method::Patch => "PATCH",
+        Method::Head => "HEAD",
+        Method::Options => "OPTIONS",
+        _ => "OTHER",
+    }
+}
 
-    match (method, path) {
+/// handler 必须是 async fn，因为 send() 是异步的
+#[http_component]
+async fn handle_request(req: Request) -> anyhow::Result<impl IntoResponse> {
+    let path = req.path().to_string();
+    let method = method_str(req.method());
+
+    match (method, path.as_str()) {
         ("GET", "/health") => Ok(Response::builder()
             .status(200)
             .header("content-type", "application/json")
@@ -83,5 +98,7 @@ let resp = send(dapr_req).await?;
 - Dapr sidecar 地址定义为常量：`const DAPR_URL: &str = "http://127.0.0.1:3500";`
 - `spin.toml` 的 `allowed_outbound_hosts` 必须包含 Dapr 地址
 - 不要使用 `std::net`、`tokio`、`reqwest` 等，Spin WASM 环境不支持
-- 不要使用 `async fn handle_request`，Spin 的 `#[http_component]` 宏自行处理异步
+- handler 必须声明为 `async fn`，因为 `send()` 返回 Future
+- `resp.status()` 返回 `&u16`（`StatusCode = u16`），用 `*resp.status()` 取值，不要调用 `.as_u16()`
+- `Method` 枚举没有 `as_str()` 方法，用 match 或辅助函数转换
 - 编译目标是 `wasm32-wasip1`，注意兼容性

@@ -25,7 +25,6 @@ if (Test-Path $envFile) { . $envFile }
 
 # App name
 $AppName = "spin-$Lang-app"
-if ($Lang -eq "rust") { $AppName = "spin-app" }
 $ConfigVersion = Get-Date -Format "yyyyMMddHHmmss"
 $ImageTag = "${AppName}:${ConfigVersion}"
 

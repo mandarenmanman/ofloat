@@ -27,12 +27,25 @@ fn json_response(status: u16, body: &str) -> Response {
         .build()
 }
 
-#[http_component]
-fn handle_request(req: Request) -> Result<impl IntoResponse> {
-    let path = req.path();
-    let method = req.method().as_str();
+fn method_str(m: &Method) -> &'static str {
+    match m {
+        Method::Get => "GET",
+        Method::Post => "POST",
+        Method::Put => "PUT",
+        Method::Delete => "DELETE",
+        Method::Patch => "PATCH",
+        Method::Head => "HEAD",
+        Method::Options => "OPTIONS",
+        _ => "OTHER",
+    }
+}
 
-    match (method, path) {
+#[http_component]
+async fn handle_request(req: Request) -> Result<impl IntoResponse> {
+    let path = req.path().to_string();
+    let method = method_str(req.method());
+
+    match (method, path.as_str()) {
         ("GET", "/health") => Ok(json_response(200, r#"{"status":"healthy"}"#)),
 
         ("POST", "/state") => {
@@ -43,9 +56,9 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .header("content-type", "application/json")
                 .body(body)
                 .build();
-            let resp = send(dapr_req)?;
+            let resp: Response = send(dapr_req).await?;
             Ok(Response::builder()
-                .status(resp.status().as_u16())
+                .status(*resp.status())
                 .body(resp.into_body())
                 .build())
         }
@@ -56,9 +69,9 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .method(Method::Get)
                 .uri(&format!("{}/v1.0/state/statestore/{}", DAPR_URL, key))
                 .build();
-            let resp = send(dapr_req)?;
+            let resp: Response = send(dapr_req).await?;
             Ok(Response::builder()
-                .status(resp.status().as_u16())
+                .status(*resp.status())
                 .header("content-type", "application/json")
                 .body(resp.into_body())
                 .build())
@@ -73,9 +86,9 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .header("content-type", "application/json")
                 .body(body)
                 .build();
-            let resp = send(dapr_req)?;
+            let resp: Response = send(dapr_req).await?;
             Ok(Response::builder()
-                .status(resp.status().as_u16())
+                .status(*resp.status())
                 .body(resp.into_body())
                 .build())
         }
@@ -85,7 +98,8 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
                 .method(Method::Get)
                 .uri(&format!("{}/v1.0/metadata", DAPR_URL))
                 .build();
-            match send(dapr_req) {
+            let result: Result<Response, _> = send(dapr_req).await;
+            match result {
                 Ok(resp) => {
                     let body_bytes = resp.into_body();
                     let body_str = String::from_utf8_lossy(&body_bytes);
@@ -107,11 +121,11 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
 
         ("GET", "/consul/nodes") => {
             let dapr_req = dapr_http_binding_request("consul-http", "/v1/catalog/nodes");
-            match send(dapr_req) {
+            let result: Result<Response, _> = send(dapr_req).await;
+            match result {
                 Ok(resp) => {
                     let body_bytes = resp.into_body();
                     let body_str = String::from_utf8_lossy(&body_bytes);
-                    // binding 返回 { "data": "<base64>" }，解码
                     let parsed = parse_binding_response(&body_str);
                     let result = format!(r#"{{"status":"ok","nodes":{}}}"#, parsed);
                     Ok(json_response(200, &result))
@@ -126,7 +140,8 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
         ("GET", "/external/sample") => {
             let dapr_req =
                 dapr_http_binding_request("external-http", "/kuaidihelp/smscallback");
-            match send(dapr_req) {
+            let result: Result<Response, _> = send(dapr_req).await;
+            match result {
                 Ok(resp) => {
                     let body_bytes = resp.into_body();
                     let body_str = String::from_utf8_lossy(&body_bytes);
@@ -153,10 +168,8 @@ fn handle_request(req: Request) -> Result<impl IntoResponse> {
 
 /// 解析 Dapr HTTP binding 响应：{ "data": "<base64>" } -> 解码后的字符串
 fn parse_binding_response(body: &str) -> String {
-    // 简单提取 "data" 字段的 base64 值并解码
     if let Some(start) = body.find(r#""data":"#) {
         let after = &body[start + 7..];
-        // data 可能是 null、字符串或其他
         if after.starts_with("null") {
             return r#""""#.to_string();
         }
@@ -169,7 +182,6 @@ fn parse_binding_response(body: &str) -> String {
             }
         }
     }
-    // fallback: 返回原始 body
     body.to_string()
 }
 
