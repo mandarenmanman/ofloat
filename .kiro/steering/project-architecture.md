@@ -2,7 +2,7 @@
 inclusion: always
 ---
 
-# WasmDapr-AI-Stack 项目架构规则
+# ofloat 项目架构规则
 
 ## 工具链版本
 
@@ -11,38 +11,19 @@ inclusion: always
 | Spin CLI | v3.6.2 | Windows amd64 |
 | Dapr (daprd) | 1.16.9 | Docker 镜像 `daprio/daprd:1.16.9` |
 | Nomad | v1.11.2 | 运行在 WSL 中 |
-| Rust spin-sdk | 5.2.0 | Cargo.toml |
-| Go spin-go-sdk | v2.2.1 | go.mod |
-| TinyGo | 0.35.0 | 要求 Go 1.19~1.23（使用 go1.23.6） |
-| JS/TS @spinframework/build-tools | 1.0.4 | package.json |
-| JS/TS @spinframework/wasi-http-proxy | 1.0.0 | package.json |
-| Python spin-sdk | 3.1.0 | requirements.txt |
-| Python componentize-py | 0.13.3 | requirements.txt |
-| itty-router (JS/TS) | 5.0.18 | package.json |
-| Node.js | v22.17.0 | 构建 JS/TS 用 |
 | Consul | 1.22.0 | 远程服务器运行，服务发现（注意：1.22.4+ UI 有已知 bug） |
 | Traefik | v3.4 | Docker 镜像 `localhost:15000/traefik:v3.4` |
 | dufs | v0.45.0 | 文件服务器，方案二 WASM 产物分发 |
 | Just | latest | Monorepo 命令编排，根目录 justfile |
+| Node.js | v22.17.0 | 构建 JS/TS 用 |
+| TinyGo | 0.35.0 | 要求 Go 1.19~1.23（使用 go1.23.6） |
 
 ## 核心原则
 
 本项目有两种 WASM + Dapr 架构模式，业务代码与基础设施完全解耦。
 
-### 方案一：Spin WASM HTTP 应用（主流模式）
-- 业务代码是 HTTP server，由 Spin 托管为长驻进程
-- Dapr sidecar 通过 `-app-port` 与业务应用双向通信
-- 支持 service invocation（可被其他服务调用）
-- Nomad Job 包含两个 task：`spin-webhost` + `dapr-sidecar`
-- 适用于：需要 HTTP API、路由、被其他服务调用的场景
-
-### 方案二：Dapr WASM Binding（无 HTTP server）
-- 业务代码是 stdin/stdout CLI 程序，编译成 `wasip1` WASM
-- 没有 Spin 参与，WASM 产物上传到 dufs，Dapr 通过 `bindings.wasm` component 加载执行
-- sidecar 无 `-app-port`，是唯一进程，按需启动 WASM
-- 不支持 service invocation，只能通过 `/v1.0/bindings/wasm` API 调用
-- Nomad Job 只有一个 task：`dapr-sidecar`
-- 适用于：事件驱动、定时任务、轻量函数计算场景
+- 方案一：Spin WASM HTTP 应用 → 详见 #[[file:.kiro/steering/spin-app.md]]
+- 方案二：Dapr WASM Binding → 详见 #[[file:.kiro/steering/dapr-bindings.md]]
 
 ### 通用原则
 - 绝对不要在业务代码中引入 Redis、Kafka、数据库等基础设施 SDK
@@ -67,75 +48,28 @@ inclusion: always
 
 ```
 spin-app/                       # 方案一：Spin WASM HTTP 应用
-  spin-app.nomad.hcl            # 统一 Nomad Job 定义（所有语言共用）
-  deploy.ps1                    # 统一部署脚本
-  rust/                         # Rust WASM 应用
-    src/lib.rs
-    Cargo.toml
-    spin.toml
-  js/                           # JavaScript WASM 应用
-    src/index.js
-    package.json
-    spin.toml
-  go/                           # Go WASM 应用
-    main.go
-    go.mod
-    spin.toml
-  ts/                           # TypeScript WASM 应用
-    src/index.ts
-    package.json
-    tsconfig.json
-    spin.toml
-  python/                       # Python WASM 应用
-    app.py
-    requirements.txt
-    spin.toml
+  spin-app.nomad.hcl
+  deploy.ps1
+  rust/ js/ go/ ts/ python/
 
 dapr-bindings/                  # 方案二：Dapr WASM Binding 应用
-  dapr-bindings.nomad.hcl       # 统一 Nomad Job 定义
-  deploy.ps1                    # 统一部署脚本
-  go/                           # Go 实现
-    main.go
-    go.mod
-    build.sh
-    test-api.sh
-    test-local.ps1
-  rust/                         # Rust 实现
-    src/main.rs
-    Cargo.toml
-    .devcontainer/
+  dapr-bindings.nomad.hcl
+  deploy.ps1
+  go/ rust/
 
 IaC/                            # 基础设施即代码
   consul/                       # Consul 配置与安装脚本
-    consul.hcl
-    install.sh
-    start.sh
   dapr/                         # 自定义 daprd 镜像
-    Dockerfile
-    build-and-push.ps1
   nomad/                        # Nomad 配置与基础设施 Job
-    server.hcl
-    client.hcl
-    redis.nomad.hcl
-    dapr-placement.nomad.hcl
-    registry.nomad.hcl
-    dufs.nomad.hcl
-    jaeger.nomad.hcl
-    deploy-infra.ps1
-    deploy-infra.sh
   traefik/                      # Traefik 反向代理
-    traefik.nomad.hcl
-    deploy.ps1
 
 scripts/                        # 运维脚本
-  check-consul-services.ps1
-  check-dapr-bindings.ps1
 ```
 
 ## 新增应用的模式
 
 ### 新增 Spin 应用（方案一）
-1. 在 `spin-app/` 下创建以语言命名的子目录（如 `spin-app/csharp/`）
+1. 在 `spin-app/` 下创建以语言命名的子目录
 2. 复制对应语言模板的结构（业务入口 + 依赖文件 + spin.toml）
 3. 在 `spin-app/spin-app.nomad.hcl` 中添加对应的 task group
 4. `spin.toml` 中 `allowed_outbound_hosts` 必须包含 Dapr sidecar 地址
@@ -149,7 +83,8 @@ scripts/                        # 运维脚本
 ## 部署相关
 
 - 部署脚本是 PowerShell (.ps1)，在 Windows 上执行
-- WASM 制品推送到 ghcr.io OCI registry
+- 方案一 WASM 制品推送到 ghcr.io OCI registry
+- 方案二 WASM 制品上传到 dufs 文件服务器
 - Nomad Job 通过 HTTP API (localhost:4646) 提交，不用 nomad CLI
 - 凭证在根目录 `.env.ps1` 中，已 gitignore
 - Nomad 运行在远程服务器（WSL 环境），Spin 用 raw_exec driver 从 ghcr.io 拉取 WASM

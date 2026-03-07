@@ -1,4 +1,4 @@
-# 🧠 WasmDapr-AI-Stack
+# 🧠 ofloat
 
 ![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)
 ![WASM](https://img.shields.io/badge/WebAssembly-Enabled-orange)

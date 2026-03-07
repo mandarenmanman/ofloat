@@ -1,4 +1,4 @@
-# WasmDapr-AI-Stack Monorepo Justfile
+# ofloat Monorepo Justfile
 # 用法: just <recipe> [args]
 # 列出所有命令: just --list
 
